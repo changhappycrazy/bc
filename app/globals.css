@@ -1,0 +1,10 @@
+/* Step 6：調整全域樣式 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 讓地圖佔滿整個容器 */
+#map {
+  height: 100%;
+  width: 100%;
+}
