@@ -101,7 +101,6 @@ function OpeningHoursBlock({ cafeId, openingHours }: { cafeId: number; openingHo
  
   return (
     <div style={{ marginTop: 10 }}>
-      {/* 今日時段列 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{ fontSize: 13, color: '#7A5C3A' }}>🕐</span>
         <span style={{
@@ -127,7 +126,6 @@ function OpeningHoursBlock({ cafeId, openingHours }: { cafeId: number; openingHo
         )}
       </div>
  
-      {/* 展開的整週表 */}
       {expanded && (
         <div style={{
           marginTop: 8, background: 'white', borderRadius: 12,
@@ -473,7 +471,8 @@ export default function Home() {
         </aside>
  
         <div className="map-area">
-          <Map cafes={filtered} />
+          {/* ✅ 修正：加上 openingHours={openingHours} */}
+          <Map cafes={filtered} openingHours={openingHours} />
           <Link
             href="/fortune"
             style={{
@@ -527,7 +526,6 @@ export default function Home() {
                 <div style={{ height: '1.5px', background: 'rgba(201,168,124,0.2)', margin: '20px 0' }} />
                 <p style={{ fontSize: 14, color: '#6D5D4E', lineHeight: 1.8, letterSpacing: '0.01em' }}>{selectedCafe.address}</p>
  
-                {/* 營業時間區塊 */}
                 <OpeningHoursBlock cafeId={selectedCafe.id} openingHours={openingHours} />
  
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 14 }}>
@@ -583,4 +581,3 @@ export default function Home() {
     </>
   );
 }
- 
