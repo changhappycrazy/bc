@@ -7,6 +7,9 @@ import type { User } from '@supabase/supabase-js';
  
 import ReviewForm from './components/ReviewForm';
 import ReviewList from './components/ReviewList';
+
+import { useGeolocation } from './hooks/useGeolocation';
+import { getDistance, formatDistance } from '../utils/distance';
  
 const Map = dynamic(() => import('./components/Map'), { 
   ssr: false,
@@ -176,6 +179,7 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [nickname, setNickname] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const { location, status, errorMsg, requestLocation } = useGeolocation();
  
   useEffect(() => {
     const checkUser = async () => {
@@ -372,8 +376,61 @@ export default function Home() {
           <div className="sidebar-header">
             <div className="brand-title">板橋咖啡廳地圖</div>
             <div className="brand-sub">Banqiao Café Explorer</div>
-          </div>
- 
+            // 定位按鈕區
+            <div style={{ display: 'flex', gap: '8px', marginTop: 14, width: '100%' }}>
+              <button
+                onClick={requestLocation}
+                style={{
+                  flex: 1,
+                  height: '40px',
+                  borderRadius: '12px',
+                  border: status === 'success' ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(201,168,124,0.3)',
+                  background: status === 'success' ? 'rgba(34,197,94,0.1)' : 'transparent',
+                  color: status === 'success' ? '#22C55E' : '#C9A87C',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                {status === 'loading' && '📡 定位中...'}
+                {status === 'success' && '✓ 已定位'}
+                {status === 'denied' && '🚫 拒絕存取'}
+                {status === 'error' && '❌ 定位失敗'}
+                {status === 'idle' && '📍 取得目前位置'}
+              </button>
+
+              {status === 'success' && (
+                <button
+                  onClick={() => {
+                    window.location.reload(); 
+                  }}
+                  style={{
+                    flex: 1,
+                    height: '40px',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(239,68,68,0.3)',
+                    background: 'rgba(239,68,68,0.05)',
+                    color: '#EF4444',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  ✕ 清除定位
+                </button>
+              )}
+            </div>
+          </div> 
           <div className="auth-section">
             <div className="user-info">
               <img src={user.user_metadata.avatar_url} alt="avatar" className="user-avatar" />
@@ -433,6 +490,11 @@ export default function Home() {
                     <div className="cafe-card-name">{cafe.name}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <StarRating rating={cafe.rating || 0} />
+                      {location && (
+                        <span style={{ fontSize: 11, color: '#C9A87C', fontWeight: 600 }}>
+                          📍 {formatDistance(getDistance(location.lat, location.lng, cafe.lat, cafe.lng))}
+                        </span>
+                      )}
                       <span style={{ fontSize: '11px', color: '#B09B8A', letterSpacing: '0.02em' }}>
                         ({cafe.review_count || 0})
                       </span>
@@ -472,7 +534,7 @@ export default function Home() {
  
         <div className="map-area">
           {/* ✅ 修正：加上 openingHours={openingHours} */}
-          <Map cafes={filtered} openingHours={openingHours} />
+          <Map cafes={filtered} openingHours={openingHours} userLocation={location} />
           <Link
             href="/fortune"
             style={{
