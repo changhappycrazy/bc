@@ -297,6 +297,13 @@ export default function Home() {
     if (filterPrices.length > 0 && (!c.price_range || !filterPrices.includes(c.price_range))) return false;
     return true;
   });
+  //定位後依照距離我遠近排列
+  const sorted = location
+  ? [...filtered].sort((a, b) =>
+      getDistance(location.lat, location.lng, a.lat, a.lng) -
+      getDistance(location.lat, location.lng, b.lat, b.lng)
+    )
+  : filtered;
  
   if (authLoading) {
     return (
@@ -477,11 +484,11 @@ export default function Home() {
             </div>
           </div>
  
-          <div className="cafe-count">找到 {filtered.length} 個特色空間</div>
+          <div className="cafe-count">找到 {sorted.length} 個特色空間</div>
           <div className="cafe-list">
             {loading ? (
               <div style={{ padding: 20, textAlign: 'center', opacity: 0.5 }}>咖啡豆研磨中...</div>
-            ) : filtered.map(cafe => {
+            ) : sorted.map(cafe => {
               const openStatus = isOpenNow(cafe.id);
               return (
                 <div key={cafe.id} className={`cafe-card ${selectedCafe?.id === cafe.id ? 'selected' : ''}`} onClick={() => setSelectedCafe(cafe)}>
@@ -493,6 +500,7 @@ export default function Home() {
                       {location && (
                         <span style={{ fontSize: 11, color: '#C9A87C', fontWeight: 600 }}>
                           📍 {formatDistance(getDistance(location.lat, location.lng, cafe.lat, cafe.lng))}
+                          {/* 503當使用者取的定位時，咖啡廳列表與定位距離遞增排列（距離我多遠） */}
                         </span>
                       )}
                       <span style={{ fontSize: '11px', color: '#B09B8A', letterSpacing: '0.02em' }}>
@@ -534,7 +542,7 @@ export default function Home() {
  
         <div className="map-area">
           {/* ✅ 修正：加上 openingHours={openingHours} */}
-          <Map cafes={filtered} openingHours={openingHours} userLocation={location} />
+          <Map cafes={sorted} openingHours={openingHours} userLocation={location} />
           <Link
             href="/fortune"
             style={{
