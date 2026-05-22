@@ -96,7 +96,7 @@ export default function FortunePage() {
         .box { background: white; padding: 40px; border-radius: 24px; display: flex; flex-direction: column; align-items: center; min-height: 400px; }
         
         .wheel-container { position: relative; width: 250px; height: 250px; border-radius: 50%; border: 8px solid #2C1A0E; overflow: hidden; transition: transform 3s cubic-bezier(0.15, 0, 0.15, 1); }
-        .wheel-pointer { position: absolute; top: -10px; z-index: 10; font-size: 30px; }
+        .wheel-pointer {z-index: 10; font-size: 30px; }
 
         .card-slot { width: 200px; height: 280px; background: #EEE; border-radius: 16px; position: relative; perspective: 1000px; }
         .coffee-card { width: 100%; height: 100%; background: #2C1A0E; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #C9A87C; transition: transform 0.6s; transform-style: preserve-3d; cursor: pointer; }
@@ -116,13 +116,15 @@ export default function FortunePage() {
       <div className="section-grid">
         <div className="box">
           <h3 style={{ marginBottom: '20px' }}>☕ 命運咖啡轉盤</h3>
-          <div className="wheel-pointer">▼</div>
+          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div className="wheel-pointer" style={{ position: 'absolute', top: -20, zIndex: 10 }}>▼</div>
           <div className="wheel-container" style={{ transform: `rotate(${rotation}deg)`, background: 'conic-gradient(#C9A87C 0% 25%, #F5F0E8 25% 50%, #C9A87C 50% 75%, #F5F0E8 75% 100%)' }}>
             <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontWeight: 'bold' }}>GO!</div>
           </div>
           <button className="action-btn" onClick={startSpin} disabled={isSpinning}>
             {isSpinning ? '沖煮中...' : '開始轉動'}
           </button>
+        </div>
         </div>
 
         <div className="box">

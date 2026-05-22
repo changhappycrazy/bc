@@ -219,7 +219,7 @@ export default function ReviewList({ cafeId }: { cafeId: number }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
               <span style={{ fontSize: 18, color: '#C9A87C' }}>✦</span>
               <h3 style={{ fontFamily: "'Noto Serif TC', serif", fontSize: 15, fontWeight: 700, color: '#2C1A0E', letterSpacing: '0.05em' }}>
-                咖啡友評論
+                <br></br>咖啡友評論
               </h3>
               {reviews.length > 0 && (
                 <span style={{ marginLeft: 4, background: '#2C1A0E', color: '#C9A87C', fontSize: 10, fontWeight: 700, borderRadius: 99, padding: '2px 8px' }}>
