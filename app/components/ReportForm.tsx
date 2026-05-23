@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '../../utils/supabase/client'
  
 export default function ReportForm({ cafeId }: { cafeId: number }) {
@@ -9,40 +9,62 @@ export default function ReportForm({ cafeId }: { cafeId: number }) {
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [existingReportId, setExistingReportId] = useState<string | null>(null)
+  const currentHourRef = useRef<number>(new Date().getHours())
   const supabase = createClient()
  
+  const checkExisting = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+ 
+    const hourStart = new Date()
+    hourStart.setMinutes(0, 0, 0)
+ 
+    const { data } = await supabase
+      .from('cafe_reports')
+      .select('id, ac_level, quiet_level, seat_status')
+      .eq('cafe_id', cafeId)
+      .eq('user_id', user.id)
+      .gte('created_at', hourStart.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+ 
+    if (data) {
+      setExistingReportId(data.id)
+      setAc(data.ac_level)
+      setQuiet(data.quiet_level)
+      setSeat(data.seat_status)
+    } else {
+      // 這個小時沒有回報，清空
+      setExistingReportId(null)
+      setAc(null)
+      setQuiet(null)
+      setSeat(null)
+    }
+  }
+ 
+  // 切換咖啡廳時重置並查詢
   useEffect(() => {
     setAc(null)
     setQuiet(null)
     setSeat(null)
     setExistingReportId(null)
     setSubmitted(false)
- 
-    const checkExisting = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
- 
-      const hourStart = new Date()
-      hourStart.setMinutes(0, 0, 0)
- 
-      const { data } = await supabase
-        .from('cafe_reports')
-        .select('id, ac_level, quiet_level, seat_status')
-        .eq('cafe_id', cafeId)
-        .eq('user_id', user.id)
-        .gte('created_at', hourStart.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
- 
-      if (data) {
-        setExistingReportId(data.id)
-        setAc(data.ac_level)
-        setQuiet(data.quiet_level)
-        setSeat(data.seat_status)
-      }
-    }
     checkExisting()
+  }, [cafeId])
+ 
+  // 每分鐘檢查是否過了整點，過了就自動清空重查
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const nowHour = new Date().getHours()
+      if (nowHour !== currentHourRef.current) {
+        currentHourRef.current = nowHour
+        setSubmitted(false)
+        checkExisting()
+      }
+    }, 60 * 1000) // 每 60 秒檢查一次
+ 
+    return () => clearInterval(timer)
   }, [cafeId])
  
   const handleSubmit = async () => {
@@ -54,7 +76,6 @@ export default function ReportForm({ cafeId }: { cafeId: number }) {
     let error = null
  
     if (existingReportId) {
-      // 更新時同步更新 created_at，讓此筆成為最新回報
       const res = await supabase
         .from('cafe_reports')
         .update({

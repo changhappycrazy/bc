@@ -263,6 +263,24 @@ export default function Home() {
  
   const updateNickname = async () => {
     if (!user) return;
+
+    // 驗證邏輯：計算中文、英數個別字數
+    const chineseCount = (nickname.match(/[\u4e00-\u9fa5]/g) || []).length;
+    const otherCount = nickname.length - chineseCount;
+
+    if (chineseCount > 6) {
+      alert('暱稱中的中文字數不能超過 6 個字喔！');
+      return;
+    }
+    if (otherCount > 11) {
+      alert('暱稱中的英文或數字不能超過 11 個字元喔！');
+      return;
+    }
+    if (nickname.trim() === '') {
+      alert('暱稱不能為空！');
+      return;
+    }
+
     const { error: authError } = await supabase.auth.updateUser({
       data: { display_name: nickname }
     });
@@ -425,9 +443,14 @@ export default function Home() {
               <img src={user.user_metadata.avatar_url} alt="avatar" className="user-avatar" />
               <div className="nickname-box" style={{ display: 'flex', flexDirection: 'column' }}>
                 {isEditing ? (
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    <input style={{ fontSize: '12px', padding: '4px 8px', border: '1px solid var(--latte)', borderRadius: '6px', width: '90px' }} value={nickname} onChange={e => setNickname(e.target.value)} />
-                    <button className="auth-btn" style={{ background: 'var(--espresso)', color: 'var(--latte)' }} onClick={updateNickname}>存</button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <input style={{ fontSize: '12px', padding: '4px 8px', border: '1px solid var(--latte)', borderRadius: '6px', width: '90px' }} value={nickname} onChange={e => setNickname(e.target.value)} placeholder="中6 / 英11" />
+                      <button className="auth-btn" style={{ background: 'var(--espresso)', color: 'var(--latte)' }} onClick={updateNickname}>存</button>
+                    </div>
+                    <span style={{ fontSize: '9px', color: '#EF4444', scale: '0.85', transformOrigin: 'left' }}>
+                      (限中6字 / 英11字)
+                    </span>
                   </div>
                 ) : (
                   <>
@@ -633,4 +656,3 @@ export default function Home() {
     </>
   );
 }
- 
