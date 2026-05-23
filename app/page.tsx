@@ -26,6 +26,7 @@ const Map = dynamic(() => import('./components/Map'), {
 });
  
 const supabase = createClient();
+const ADMIN_EMAIL = 'satestbc@gmail.com';
  
 type Cafe = {
   id: number;
@@ -179,6 +180,7 @@ export default function Home() {
   const [filterPrices, setFilterPrices] = useState<string[]>([]);
   
   const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [nickname, setNickname] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const { location, status, errorMsg, requestLocation } = useGeolocation();
@@ -191,6 +193,7 @@ export default function Home() {
       setUser(currentUser);
       if (currentUser) {
         setNickname(currentUser.user_metadata.display_name || currentUser.user_metadata.full_name || '咖啡愛好者');
+        setIsAdmin(currentUser.email === ADMIN_EMAIL);
       }
       setAuthLoading(false);
     };
@@ -202,6 +205,9 @@ export default function Home() {
       setUser(currentUser);
       if (currentUser) {
         setNickname(currentUser.user_metadata.display_name || currentUser.user_metadata.full_name || '咖啡愛好者');
+        setIsAdmin(currentUser.email === ADMIN_EMAIL);
+      } else {
+        setIsAdmin(false);
       }
     });
  
@@ -264,7 +270,6 @@ export default function Home() {
   const updateNickname = async () => {
     if (!user) return;
 
-    // 驗證邏輯：計算中文、英數個別字數
     const chineseCount = (nickname.match(/[\u4e00-\u9fa5]/g) || []).length;
     const otherCount = nickname.length - chineseCount;
 
@@ -454,7 +459,14 @@ export default function Home() {
                   </div>
                 ) : (
                   <>
-                    <span className="user-name">{nickname}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span className="user-name">{nickname}</span>
+                      {isAdmin && (
+                        <span style={{ fontSize: 9, background: '#DC2626', color: 'white', padding: '1px 6px', borderRadius: 99, fontWeight: 700, letterSpacing: '0.05em' }}>
+                          管理員
+                        </span>
+                      )}
+                    </div>
                     <span className="edit-link" onClick={() => setIsEditing(true)}>修改暱稱</span>
                   </>
                 )}
@@ -559,6 +571,23 @@ export default function Home() {
           >
             🔮 不知道去哪？試試咖啡運勢
           </Link>
+          {isAdmin && (
+            <Link
+              href="/admin"
+              style={{
+                position: 'absolute', bottom: '20px', right: '20px', zIndex: 1000,
+                background: '#DC2626', color: 'white',
+                padding: '12px 20px', borderRadius: '50px', textDecoration: 'none',
+                boxShadow: '0 4px 15px rgba(220,38,38,0.35)',
+                display: 'flex', alignItems: 'center', gap: '8px',
+                fontWeight: 'bold', fontSize: '14px', transition: 'transform 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              🛡️ 管理後台
+            </Link>
+          )}
         </div>
  
         <aside className="detail-panel">
@@ -624,7 +653,6 @@ export default function Home() {
                   )}
                 </div>
  
-                {/* 即時狀況摘要（Google Maps 按鈕上方） */}
                 <div style={{ marginTop: 20 }}>
                   <ReportSummary cafeId={selectedCafe.id} />
                 </div>
@@ -633,7 +661,6 @@ export default function Home() {
                   在 Google Maps 開啟導航 →
                 </a>
  
-                {/* 即時回報表單（評論區上方） */}
                 <div style={{ marginTop: 24 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                     <div style={{ flex: 1, height: '1.5px', background: 'rgba(201,168,124,0.2)' }} />
@@ -641,7 +668,7 @@ export default function Home() {
                   <ReportForm cafeId={selectedCafe.id} />
                 </div>
  
-                <ReviewList cafeId={selectedCafe.id} />
+                <ReviewList cafeId={selectedCafe.id} isAdmin={isAdmin} />
                 <ReviewForm cafeId={selectedCafe.id} />
               </div>
             </>

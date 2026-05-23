@@ -1,8 +1,8 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '../../utils/supabase/client'
  
-export default function ReviewList({ cafeId }: { cafeId: number }) {
+export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number; isAdmin?: boolean }) {
   const [reviews, setReviews] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -65,7 +65,6 @@ export default function ReviewList({ cafeId }: { cafeId: number }) {
  
     const { data: { user } } = await supabase.auth.getUser()
  
-    // undefined = 不動, null = 刪除, string = 新圖片
     let newImageUrl: string | null | undefined = undefined
  
     if (removeExistingImage && !editImageFile) {
@@ -149,6 +148,8 @@ export default function ReviewList({ cafeId }: { cafeId: number }) {
         .edit-btn:hover { background: rgba(201,168,124,0.15); color: #2C1A0E; }
         .delete-btn { color: #B09B8A; }
         .delete-btn:hover { background: rgba(220,80,60,0.08); color: #c0392b; }
+        .admin-delete-btn { color: #DC2626; }
+        .admin-delete-btn:hover { background: rgba(220,38,38,0.1); color: #b91c1c; }
         .edit-textarea {
           width: 100%; background: #FFFDF9;
           border: 1.5px solid #C9A87C; border-radius: 10px;
@@ -215,7 +216,6 @@ export default function ReviewList({ cafeId }: { cafeId: number }) {
               </div>
             )}
  
-            {/* 標題列 */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
               <span style={{ fontSize: 18, color: '#C9A87C' }}>✦</span>
               <h3 style={{ fontFamily: "'Noto Serif TC', serif", fontSize: 15, fontWeight: 700, color: '#2C1A0E', letterSpacing: '0.05em' }}>
@@ -226,10 +226,14 @@ export default function ReviewList({ cafeId }: { cafeId: number }) {
                   {reviews.length}
                 </span>
               )}
+              {isAdmin && (
+                <span style={{ marginLeft: 4, background: '#DC2626', color: 'white', fontSize: 9, fontWeight: 700, borderRadius: 99, padding: '2px 8px', letterSpacing: '0.05em' }}>
+                  管理員模式
+                </span>
+              )}
               <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, rgba(201,168,124,0.4), transparent)' }} />
             </div>
  
-            {/* 評論列表 */}
             <div className="review-scroll" style={{ maxHeight: 360, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, paddingRight: 4 }}>
               {loading ? (
                 <div style={{ textAlign: 'center', padding: '20px 0', color: '#C9A87C', fontSize: 13, opacity: 0.7 }}>☕ 載入中...</div>
@@ -243,8 +247,6 @@ export default function ReviewList({ cafeId }: { cafeId: number }) {
                   const isOwner = currentUserId === rv.user_id
                   const isEditing = editingId === rv.id
                   const isDeleting = deletingId === rv.id
- 
-                  // 編輯模式下的圖片顯示邏輯
                   const editingCurrentImage = removeExistingImage ? null : rv.image_url
                   const editingDisplayImage = editImagePreview ?? editingCurrentImage
  
@@ -255,11 +257,10 @@ export default function ReviewList({ cafeId }: { cafeId: number }) {
                       style={{
                         animationDelay: `${i * 0.06}s`,
                         background: 'white', borderRadius: 14, padding: '13px 16px',
-                        border: `1px solid ${isEditing ? '#C9A87C' : 'rgba(201,168,124,0.18)'}`,
+                        border: `1px solid ${isEditing ? '#C9A87C' : isAdmin && !isOwner ? 'rgba(220,38,38,0.15)' : 'rgba(201,168,124,0.18)'}`,
                         boxShadow: '0 2px 8px rgba(44,26,14,0.05)', transition: 'border-color 0.2s',
                       }}
                     >
-                      {/* 用戶列 */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #2C1A0E, #7A5C3A)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#C9A87C', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
@@ -273,16 +274,25 @@ export default function ReviewList({ cafeId }: { cafeId: number }) {
                           <span style={{ fontSize: 10, color: '#C9A87C', background: 'rgba(201,168,124,0.1)', padding: '2px 8px', borderRadius: 99, fontWeight: 600 }}>
                             {new Date(rv.created_at).toLocaleDateString('zh-TW', { month: 'short', day: 'numeric' })}
                           </span>
-                          {isOwner && !isEditing && (
+                          {!isEditing && (
                             <>
-                              <button className="icon-btn edit-btn" onClick={() => handleEdit(rv)}>✏️ 編輯</button>
-                              <button className="icon-btn delete-btn" onClick={() => handleDelete(rv.id)} disabled={isDeleting}>🗑️</button>
+                              {isOwner && (
+                                <button className="icon-btn edit-btn" onClick={() => handleEdit(rv)}>✏️ 編輯</button>
+                              )}
+                              {(isOwner || isAdmin) && (
+                                <button
+                                  className={`icon-btn ${isAdmin && !isOwner ? 'admin-delete-btn' : 'delete-btn'}`}
+                                  onClick={() => handleDelete(rv.id)}
+                                  disabled={isDeleting}
+                                >
+                                  🗑️{isAdmin && !isOwner ? ' 管理刪除' : ''}
+                                </button>
+                              )}
                             </>
                           )}
                         </div>
                       </div>
  
-                      {/* 內文 or 編輯框 */}
                       {isEditing ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                           <textarea
@@ -292,8 +302,6 @@ export default function ReviewList({ cafeId }: { cafeId: number }) {
                             onChange={e => setEditContent(e.target.value)}
                             autoFocus
                           />
- 
-                          {/* 編輯模式圖片區 */}
                           <div>
                             {editingDisplayImage ? (
                               <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
@@ -307,18 +315,14 @@ export default function ReviewList({ cafeId }: { cafeId: number }) {
                                   className="remove-img-overlay-btn"
                                   onClick={() => {
                                     if (editImageFile) {
-                                      // 清掉新上傳的預覽，回到原有圖片
                                       setEditImageFile(null)
                                       setEditImagePreview(null)
                                       if (editFileInputRef.current) editFileInputRef.current.value = ''
                                     } else {
-                                      // 標記刪除原有圖片
                                       setRemoveExistingImage(true)
                                     }
                                   }}
-                                >
-                                  ✕
-                                </button>
+                                >✕</button>
                               </div>
                             ) : (
                               <label className="edit-upload-label">
@@ -333,7 +337,6 @@ export default function ReviewList({ cafeId }: { cafeId: number }) {
                               </label>
                             )}
                           </div>
- 
                           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                             <button className="cancel-btn" onClick={handleCancelEdit}>取消</button>
                             <button className="save-btn" onClick={() => handleSave(rv)} disabled={savingId === rv.id}>
@@ -373,4 +376,3 @@ function LightboxProvider({ children }: {
   const [src, setSrc] = useState<string | null>(null)
   return <>{children(src, setSrc, () => setSrc(null))}</>
 }
- 
