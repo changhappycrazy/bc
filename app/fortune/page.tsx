@@ -32,7 +32,7 @@ export default function FortunePage() {
   const [isSpinning, setIsSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
 
-  // 🧩 【全新加入】人格測試狀態機：'gate' (主入口卡片) | 'testing' (答題中) | 'result' (看結果)
+  // 🧩 人格測試狀態機：'gate' (主入口卡片) | 'testing' (答題中) | 'result' (看結果)
   const [quizView, setQuizView] = useState<'gate' | 'testing' | 'result'>('gate');
   const [currentQuiz, setCurrentQuiz] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -74,7 +74,7 @@ export default function FortunePage() {
     }, 3000);
   };
 
-  // 🧠 【全新加入】開始個性測試邏輯（隨機抽取10題）
+  // 開始個性測試邏輯（隨機抽取10題）
   const startQuiz = () => {
     const shuffled = [...questionBank].sort(() => 0.5 - Math.random()).slice(0, 10);
     setCurrentQuiz(shuffled);
@@ -83,7 +83,7 @@ export default function FortunePage() {
     setQuizView('testing');
   };
 
-  // 🧠 【全新加入】點擊答案累算邏輯
+  // 點擊答案累算邏輯
   const handleQuizAnswer = async (dimension: string) => {
     const updatedScores = { ...scores, [dimension]: scores[dimension] + 1 };
     setScores(updatedScores);
@@ -96,31 +96,31 @@ export default function FortunePage() {
     }
   };
 
-  // 🧠 【全新加入】前後端權重比對與模糊推薦邏輯（修正之前圖片中的 API 欄位報錯）
+  // 前後端權重比對與模糊推薦邏輯
   const calculateQuizResult = async (finalScores: Record<string, number>) => {
     const queryTags = {
-      is_silent: finalScores.S >= finalScores.V,
+      is_quiet: finalScores.S >= finalScores.V,
       is_coffee_first: finalScores.C >= finalScores.F,
       is_retro: finalScores.R >= finalScores.M,
       is_hidden: finalScores.H >= finalScores.P
     };
 
     // 設定性格標題頭銜
-    const label1 = queryTags.is_silent ? "孤獨安靜" : "熱鬧熱情";
+    const label1 = queryTags.is_quiet ? "孤獨安靜" : "熱鬧熱情";
     const label2 = queryTags.is_coffee_first ? "咖啡職人" : "甜點控";
     const label3 = queryTags.is_retro ? "復古老宅" : "極簡現代";
     const label4 = queryTags.is_hidden ? "巷弄秘境風" : "開闊社交風";
     setPersonalityTitle(`${label1} × ${label2} 的 ${label3}${label4}`);
 
     try {
-      // 修正：從 supabase 完整抓取，再透過前端比對權重，完美支援模糊配對！
       const { data: allCafes, error } = await supabase.from('cafes').select('*');
       if (error) throw error;
 
       if (allCafes && allCafes.length > 0) {
         const scoredCafes = allCafes.map((cafe: any) => {
           let matchScore = 0;
-          if (cafe.is_silent === queryTags.is_silent) matchScore++;
+          // 🛠️ 修正：將 queryTags.is_silent 修正為對應的 queryTags.is_quiet，讓權重配對完全精準
+          if (cafe.is_quiet === queryTags.is_quiet) matchScore++;
           if (cafe.is_coffee_first === queryTags.is_coffee_first) matchScore++;
           if (cafe.is_retro === queryTags.is_retro) matchScore++;
           if (cafe.is_hidden === queryTags.is_hidden) matchScore++;
@@ -152,9 +152,8 @@ export default function FortunePage() {
         .wheel-container { position: relative; width: 250px; height: 250px; border-radius: 50%; border: 8px solid #2C1A0E; overflow: hidden; transition: transform 3s cubic-bezier(0.15, 0, 0.15, 1); }
         .wheel-pointer { z-index: 10; font-size: 30px; }
         
-        /* 🧠 測試卡片、按鈕的專屬擴充樣式 */
         .quiz-box-full { background: white; padding: 40px; border-radius: 24px; width: 100%; max-width: 600px; text-align: center; box-shadow: 0 10px 30px rgba(44,26,14,0.05); }
-        .quiz-option-btn { background: #fdfbf7; color: #333; border: 1px solid #dcd1c4; text-align: left; font-size: 16px; padding: 16px; width: 100%; borderRadius: 12px; cursor: pointer; margin-bottom: 12px; transition: all 0.2s; border-radius: 8px; }
+        .quiz-option-btn { background: #fdfbf7; color: #333; border: 1px solid #dcd1c4; text-align: left; font-size: 16px; padding: 16px; width: 100%; border-radius: 12px; cursor: pointer; margin-bottom: 12px; transition: all 0.2s; }
         .quiz-option-btn:hover { background: #f5eee6; border-color: #7A5C3A; }
         .progress-bar-container { margin-top: 30px; width: 100%; text-align: left; color: #888; font-size: 13px; }
         .cafe-recommend-card { border: 1px solid #e6dfd5; padding: 18px; border-radius: 12px; margin-bottom: 15px; text-align: left; cursor: pointer; transition: background 0.2s; }
@@ -167,16 +166,16 @@ export default function FortunePage() {
 
       <button className="back-btn" onClick={() => router.back()}>← 返回地圖</button>
 
-      {/* 🌟 永遠保留在最上方的 TODAY'S FORTUNE */}
+      {/* 🌟 TODAY'S FORTUNE */}
       <div className="fortune-card">
         <h2 style={{ color: '#7A5C3A', fontSize: '14px', letterSpacing: '2px', marginBottom: '10px' }}>TODAY'S FORTUNE</h2>
         <h1 style={{ fontSize: '24px', color: '#2C1A0E' }}>{fortune}</h1>
       </div>
 
-      {/* 🟢 第一階段：主入口（轉盤 + 測試初始入口卡片） */}
+      {/* 🟢 第一階段：主入口 */}
       {quizView === 'gate' && (
         <div className="section-grid">
-          {/* 左側：原本的咖啡轉盤 */}
+          {/* 左側：咖啡轉盤 */}
           <div className="box">
             <h3 style={{ marginBottom: '20px', color: '#2C1A0E' }}>☕ 命運咖啡轉盤</h3>
             <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -190,23 +189,23 @@ export default function FortunePage() {
             </div>
           </div>
 
-          {/* 右側：改版替換後的 🔍 咖啡人個性測試入口卡片 */}
+          {/* 右側：咖啡人個性測試入口卡片 */}
           <div className="box" style={{ justifyContent: 'center' }}>
             <h3 style={{ marginBottom: '10px', color: '#2C1A0E', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
               🔍 咖啡廳個性測驗
             </h3>
-          <p style={{ color: '#666', fontSize: '14px', textAlign: 'center', lineHeight: '1.6', maxWidth: '280px' }}>
-            快來測測看你的咖啡廳專屬人格，<br />
-            幫你找到適合你的咖啡廳✨
-          </p>
-          <button className="action-btn" onClick={startQuiz}>
-            開始測試
-          </button>
-         </div>
+            <p style={{ color: '#666', fontSize: '14px', textAlign: 'center', lineHeight: '1.6', maxWidth: '280px' }}>
+              快來測測看你的咖啡廳專屬人格，<br />
+              幫你找到適合你的咖啡廳✨
+            </p>
+            <button className="action-btn" onClick={startQuiz}>
+              開始測試
+            </button>
+          </div>
         </div>
       )}
 
-      {/* 🟡 第二階段：答題中獨立卡片頁面 */}
+      {/* 🟡 第二階段：答題中頁面 */}
       {quizView === 'testing' && currentQuiz.length > 0 && (
         <div className="quiz-box-full">
           {isQuizLoading ? (
@@ -238,7 +237,7 @@ export default function FortunePage() {
         </div>
       )}
 
-      {/* 🔵 第三階段：測試結果獨立呈現頁面 */}
+      {/* 🔵 第三階段：測試結果頁面 */}
       {quizView === 'result' && (
         <div className="quiz-box-full" style={{ maxWidth: '550px' }}>
           <div style={{ backgroundColor: '#FDF7F2', padding: '20px', borderRadius: '16px', marginBottom: '25px', border: '1px solid #EADBC8' }}>
@@ -261,10 +260,30 @@ export default function FortunePage() {
                   <p style={{ margin: '0 0 12px 0', color: '#666', fontSize: '13px' }}>📍 {cafe.address || '未提供完整地址'}</p>
                   
                   <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                    {cafe.is_silent && <span className="badge" style={{ backgroundColor: '#E8F5E9', color: '#2E7D32' }}>🤫 安靜</span>}
-                    {cafe.is_coffee_first && <span className="badge" style={{ backgroundColor: '#EFEBE9', color: '#4E342E' }}>☕ 咖啡控</span>}
-                    {cafe.is_retro && <span className="badge" style={{ backgroundColor: '#FFF3E0', color: '#E65100' }}>🪵 老宅</span>}
-                    {cafe.is_hidden && <span className="badge" style={{ backgroundColor: '#ECEFF1', color: '#37474F' }}>🧭 巷弄</span>}
+                    {/* 🛠️ 修正與補齊：全面支援二選一雙向標籤渲染，確保所有特徵都有小標呈現 */}
+                    {cafe.is_quiet ? (
+                      <span className="badge" style={{ backgroundColor: '#E8F5E9', color: '#2E7D32' }}>🤫 安靜</span>
+                    ) : (
+                      <span className="badge" style={{ backgroundColor: '#E1F5FE', color: '#0288D1' }}>🎉 熱鬧</span>
+                    )}
+
+                    {cafe.is_coffee_first ? (
+                      <span className="badge" style={{ backgroundColor: '#EFEBE9', color: '#4E342E' }}>☕ 咖啡控</span>
+                    ) : (
+                      <span className="badge" style={{ backgroundColor: '#FCE4EC', color: '#C2185B' }}>🍰 甜點控</span>
+                    )}
+
+                    {cafe.is_retro ? (
+                      <span className="badge" style={{ backgroundColor: '#FFF3E0', color: '#E65100' }}>🪵 老宅</span>
+                    ) : (
+                      <span className="badge" style={{ backgroundColor: '#E0F2F1', color: '#004D40' }}>🏢 現代</span>
+                    )}
+
+                    {cafe.is_hidden ? (
+                      <span className="badge" style={{ backgroundColor: '#ECEFF1', color: '#37474F' }}>🧭 巷弄</span>
+                    ) : (
+                      <span className="badge" style={{ backgroundColor: '#F3E5F5', color: '#7B1FA2' }}>🪟 開闊</span>
+                    )}
                   </div>
                 </div>
               ))
@@ -279,7 +298,7 @@ export default function FortunePage() {
         </div>
       )}
 
-      {/* 燈箱元件（點擊轉盤贏家、或是人格測試推薦的卡片都會統一開啟它） */}
+      {/* 燈箱元件 */}
       {showModal && (
         <CafeDetailModal 
           cafe={selectedFortuneCafe} 
