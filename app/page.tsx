@@ -7,7 +7,9 @@ import type { User } from '@supabase/supabase-js';
  
 import ReviewForm from './components/ReviewForm';
 import ReviewList from './components/ReviewList';
-
+import ReportForm from './components/ReportForm';
+import ReportSummary from './components/ReportSummary';
+ 
 import { useGeolocation } from './hooks/useGeolocation';
 import { getDistance, formatDistance } from '../utils/distance';
  
@@ -297,13 +299,13 @@ export default function Home() {
     if (filterPrices.length > 0 && (!c.price_range || !filterPrices.includes(c.price_range))) return false;
     return true;
   });
-  //定位後依照距離我遠近排列
+ 
   const sorted = location
-  ? [...filtered].sort((a, b) =>
-      getDistance(location.lat, location.lng, a.lat, a.lng) -
-      getDistance(location.lat, location.lng, b.lat, b.lng)
-    )
-  : filtered;
+    ? [...filtered].sort((a, b) =>
+        getDistance(location.lat, location.lng, a.lat, a.lng) -
+        getDistance(location.lat, location.lng, b.lat, b.lng)
+      )
+    : filtered;
  
   if (authLoading) {
     return (
@@ -372,7 +374,7 @@ export default function Home() {
         .detail-hero { width: 100%; height: 210px; object-fit: cover; }
         .detail-body { padding: 28px; }
         .detail-name { font-family: 'Noto Serif TC', serif; font-size: 22px; font-weight: 700; color: var(--espresso); }
-        .maps-btn { display: block; margin-top: 24px; padding: 14px; text-align: center; background: var(--espresso); color: var(--latte); border-radius: 14px; text-decoration: none; font-size: 14px; font-weight: 700; transition: all 0.3s; box-shadow: 0 4px 12px rgba(44,26,14,0.15); }
+        .maps-btn { display: block; margin-top: 16px; padding: 14px; text-align: center; background: var(--espresso); color: var(--latte); border-radius: 14px; text-decoration: none; font-size: 14px; font-weight: 700; transition: all 0.3s; box-shadow: 0 4px 12px rgba(44,26,14,0.15); }
         .maps-btn:hover { opacity: 0.95; transform: scale(1.02); }
         @keyframes pulse-green { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .dot-open { animation: pulse-green 2s ease-in-out infinite; }
@@ -383,25 +385,16 @@ export default function Home() {
           <div className="sidebar-header">
             <div className="brand-title">板橋咖啡廳地圖</div>
             <div className="brand-sub">Banqiao Café Explorer</div>
-            // 定位按鈕區
             <div style={{ display: 'flex', gap: '8px', marginTop: 14, width: '100%' }}>
               <button
                 onClick={requestLocation}
                 style={{
-                  flex: 1,
-                  height: '40px',
-                  borderRadius: '12px',
+                  flex: 1, height: '40px', borderRadius: '12px',
                   border: status === 'success' ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(201,168,124,0.3)',
                   background: status === 'success' ? 'rgba(34,197,94,0.1)' : 'transparent',
                   color: status === 'success' ? '#22C55E' : '#C9A87C',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px'
+                  fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                 }}
               >
                 {status === 'loading' && '📡 定位中...'}
@@ -410,34 +403,23 @@ export default function Home() {
                 {status === 'error' && '❌ 定位失敗'}
                 {status === 'idle' && '📍 取得目前位置'}
               </button>
-
               {status === 'success' && (
                 <button
-                  onClick={() => {
-                    window.location.reload(); 
-                  }}
+                  onClick={() => window.location.reload()}
                   style={{
-                    flex: 1,
-                    height: '40px',
-                    borderRadius: '12px',
+                    flex: 1, height: '40px', borderRadius: '12px',
                     border: '1px solid rgba(239,68,68,0.3)',
-                    background: 'rgba(239,68,68,0.05)',
-                    color: '#EF4444',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '4px'
+                    background: 'rgba(239,68,68,0.05)', color: '#EF4444',
+                    fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
                   }}
                 >
                   ✕ 清除定位
                 </button>
               )}
             </div>
-          </div> 
+          </div>
+ 
           <div className="auth-section">
             <div className="user-info">
               <img src={user.user_metadata.avatar_url} alt="avatar" className="user-avatar" />
@@ -500,7 +482,6 @@ export default function Home() {
                       {location && (
                         <span style={{ fontSize: 11, color: '#C9A87C', fontWeight: 600 }}>
                           📍 {formatDistance(getDistance(location.lat, location.lng, cafe.lat, cafe.lng))}
-                          {/* 503當使用者取的定位時，咖啡廳列表與定位距離遞增排列（距離我多遠） */}
                         </span>
                       )}
                       <span style={{ fontSize: '11px', color: '#B09B8A', letterSpacing: '0.02em' }}>
@@ -513,9 +494,7 @@ export default function Home() {
                             style={{
                               width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
                               background: openStatus ? '#22C55E' : '#EF4444',
-                              boxShadow: openStatus
-                                ? '0 0 0 2px rgba(34,197,94,0.2)'
-                                : '0 0 0 2px rgba(239,68,68,0.2)',
+                              boxShadow: openStatus ? '0 0 0 2px rgba(34,197,94,0.2)' : '0 0 0 2px rgba(239,68,68,0.2)',
                             }}
                           />
                           <span style={{ fontSize: 10, fontWeight: 600, color: openStatus ? '#16A34A' : '#DC2626' }}>
@@ -541,27 +520,16 @@ export default function Home() {
         </aside>
  
         <div className="map-area">
-          {/* ✅ 修正：加上 openingHours={openingHours} */}
           <Map cafes={sorted} openingHours={openingHours} userLocation={location} />
           <Link
             href="/fortune"
             style={{
-              position: 'absolute',
-              bottom: '20px',
-              left: '20px',
-              zIndex: 1000,
-              background: 'var(--espresso)',
-              color: 'var(--latte)',
-              padding: '12px 20px',
-              borderRadius: '50px',
-              textDecoration: 'none',
+              position: 'absolute', bottom: '20px', left: '20px', zIndex: 1000,
+              background: 'var(--espresso)', color: 'var(--latte)',
+              padding: '12px 20px', borderRadius: '50px', textDecoration: 'none',
               boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontWeight: 'bold',
-              fontSize: '14px',
-              transition: 'transform 0.2s'
+              display: 'flex', alignItems: 'center', gap: '8px',
+              fontWeight: 'bold', fontSize: '14px', transition: 'transform 0.2s'
             }}
             onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
             onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
@@ -582,10 +550,7 @@ export default function Home() {
                     if (openStatus === null) return null;
                     return (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, marginTop: 4, background: openStatus ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)', padding: '4px 10px', borderRadius: 99, border: `1px solid ${openStatus ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}` }}>
-                        <div
-                          className={openStatus ? 'dot-open' : ''}
-                          style={{ width: 7, height: 7, borderRadius: '50%', background: openStatus ? '#22C55E' : '#EF4444', flexShrink: 0 }}
-                        />
+                        <div className={openStatus ? 'dot-open' : ''} style={{ width: 7, height: 7, borderRadius: '50%', background: openStatus ? '#22C55E' : '#EF4444', flexShrink: 0 }} />
                         <span style={{ fontSize: 11, fontWeight: 700, color: openStatus ? '#16A34A' : '#DC2626' }}>
                           {openStatus ? '營業中' : '休息中'}
                         </span>
@@ -635,7 +600,24 @@ export default function Home() {
                     </span>
                   )}
                 </div>
-                <a href={selectedCafe.google_maps_url || '#'} target="_blank" className="maps-btn">在 Google Maps 開啟導航 →</a>
+ 
+                {/* 即時狀況摘要（Google Maps 按鈕上方） */}
+                <div style={{ marginTop: 20 }}>
+                  <ReportSummary cafeId={selectedCafe.id} />
+                </div>
+ 
+                <a href={selectedCafe.google_maps_url || '#'} target="_blank" className="maps-btn">
+                  在 Google Maps 開啟導航 →
+                </a>
+ 
+                {/* 即時回報表單（評論區上方） */}
+                <div style={{ marginTop: 24 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <div style={{ flex: 1, height: '1.5px', background: 'rgba(201,168,124,0.2)' }} />
+                  </div>
+                  <ReportForm cafeId={selectedCafe.id} />
+                </div>
+ 
                 <ReviewList cafeId={selectedCafe.id} />
                 <ReviewForm cafeId={selectedCafe.id} />
               </div>
@@ -651,3 +633,4 @@ export default function Home() {
     </>
   );
 }
+ 
