@@ -28,6 +28,11 @@ const Map = dynamic(() => import('./components/Map'), {
 const supabase = createClient();
 const ADMIN_EMAIL = 'satestbc@gmail.com';
  
+type PriceRange = {
+  id: number;
+  display_text: string;
+};
+ 
 type Cafe = {
   id: number;
   name: string;
@@ -38,7 +43,8 @@ type Cafe = {
   rating: number | null;
   light: number | null;
   review_count: number | null;
-  price_range: string | null;
+  price_range_id: number | null;
+  price_range: PriceRange | null;
   hours: string | null;
   image_url: string | null;
   google_maps_url: string | null;
@@ -123,7 +129,7 @@ function OpeningHoursBlock({ cafeId, openingHours }: { cafeId: number; openingHo
     </div>
   );
 }
-
+ 
 // ── 收藏清單側邊面板 ──────────────────────────────────────────
 function FavoritesPanel({ cafes, favorites, onClose, onSelect, onToggleFavorite }: {
   cafes: Cafe[];
@@ -182,6 +188,8 @@ function FavoritesPanel({ cafes, favorites, onClose, onSelect, onToggleFavorite 
  
 export default function Home() {
   const [cafes, setCafes] = useState<Cafe[]>([]);
+  const [priceRanges, setPriceRanges] = useState<PriceRange[]>([]);
+  // priceRanges 從 cafes join 資料推導，不需額外 query
   const [openingHours, setOpeningHours] = useState<OpeningHour[]>([]);
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(true);
@@ -194,7 +202,7 @@ export default function Home() {
   const [filterOutlet, setFilterOutlet] = useState(false);
   const [filterSpecialty, setFilterSpecialty] = useState(false);
   const [filterPourOver, setFilterPourOver] = useState(false);
-  const [filterPrices, setFilterPrices] = useState<string[]>([]);
+  const [filterPriceIds, setFilterPriceIds] = useState<number[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [nickname, setNickname] = useState('');
@@ -234,9 +242,26 @@ export default function Home() {
  
     async function fetchCafes() {
       setLoading(true);
-      const { data, error } = await supabase.from('cafes').select('*').order('rating', { ascending: false });
+      const { data, error } = await supabase
+        .from('cafes')
+        .select('*, price_range:price_ranges(id, display_text)')
+        .order('rating', { ascending: false });
       if (error) console.error('Supabase error:', error);
-      else setCafes(data || []);
+      else {
+        const cafesData: Cafe[] = data || [];
+        setCafes(cafesData);
+        // 從 join 資料推導不重複的價格區間，依 id 排序
+        const seen = new Set<number>();
+        const derived: PriceRange[] = [];
+        for (const c of cafesData) {
+          if (c.price_range && !seen.has(c.price_range.id)) {
+            seen.add(c.price_range.id);
+            derived.push(c.price_range);
+          }
+        }
+        derived.sort((a, b) => a.id - b.id);
+        setPriceRanges(derived);
+      }
       setLoading(false);
     }
  
@@ -251,12 +276,12 @@ export default function Home() {
  
     return () => subscription.unsubscribe();
   }, []);
-
+ 
   const fetchFavorites = async (userId: string) => {
     const { data } = await supabase.from('cafe_favorites').select('cafe_id').eq('user_id', userId);
     if (data) setFavorites(new Set(data.map((r: any) => r.cafe_id)));
   };
-
+ 
   const toggleFavorite = async (cafeId: number, e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (!user) return;
@@ -329,7 +354,7 @@ export default function Home() {
     if (filterOutlet && !c.has_outlet) return false;
     if (filterSpecialty && !c.tags?.includes('精品咖啡')) return false;
     if (filterPourOver && !c.tags?.includes('手沖咖啡')) return false;
-    if (filterPrices.length > 0 && (!c.price_range || !filterPrices.includes(c.price_range))) return false;
+    if (filterPriceIds.length > 0 && (c.price_range_id === null || !filterPriceIds.includes(c.price_range_id))) return false;
     return true;
   });
  
@@ -339,6 +364,11 @@ export default function Home() {
         getDistance(location.lat, location.lng, b.lat, b.lng)
       )
     : filtered;
+ 
+  // 單選：點同一個取消，點不同的切換
+  const togglePriceFilter = (id: number) => {
+    setFilterPriceIds(prev => prev.includes(id) ? [] : [id]);
+  };
  
   if (authLoading) {
     return (
@@ -416,7 +446,7 @@ export default function Home() {
         @keyframes pulse-green { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .dot-open { animation: pulse-green 2s ease-in-out infinite; }
       `}</style>
-
+ 
       {/* 收藏面板 */}
       {showFavorites && (
         <FavoritesPanel
@@ -492,7 +522,6 @@ export default function Home() {
                         </span>
                       )}
                     </div>
-                    {/* 修改暱稱 + 我的收藏 */}
                     <div style={{ display: 'flex', gap: 10, marginTop: 1 }}>
                       <span className="edit-link" onClick={() => setIsEditing(true)}>修改暱稱</span>
                       <span className="fav-link" onClick={() => setShowFavorites(true)}>
@@ -523,10 +552,13 @@ export default function Home() {
             </div>
             <div className="filter-label" style={{ marginTop: 10 }}>消費金額</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {['$1-200', '$200-400', '$400-600'].map(p => (
-                <button key={p} className={`toggle-btn ${filterPrices.includes(p) ? 'active' : ''}`}
-                  onClick={() => setFilterPrices(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p])}>
-                  {p}
+              {priceRanges.filter(pr => pr.id !== 4).map(pr => (
+                <button
+                  key={pr.id}
+                  className={`toggle-btn ${filterPriceIds.includes(pr.id) ? 'active' : ''}`}
+                  onClick={() => togglePriceFilter(pr.id)}
+                >
+                  {pr.display_text}
                 </button>
               ))}
             </div>
@@ -570,7 +602,6 @@ export default function Home() {
                             </span>
                           </>
                         )}
-                        {/* 愛心按鈕 */}
                         <button
                           className="heart-btn"
                           onClick={e => toggleFavorite(cafe.id, e)}
@@ -641,7 +672,6 @@ export default function Home() {
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                   <div className="detail-name">{selectedCafe.name}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginTop: 4 }}>
-                    {/* 詳細面板愛心 */}
                     <button
                       className="heart-btn"
                       onClick={e => toggleFavorite(selectedCafe.id, e)}
@@ -666,6 +696,7 @@ export default function Home() {
                 </div>
                 <div style={{ height: '1.5px', background: 'rgba(201,168,124,0.2)', margin: '20px 0' }} />
                 <p style={{ fontSize: 14, color: '#6D5D4E', lineHeight: 1.8, letterSpacing: '0.01em' }}>{selectedCafe.address}</p>
+ 
  
                 <OpeningHoursBlock cafeId={selectedCafe.id} openingHours={openingHours} />
  
@@ -737,3 +768,4 @@ export default function Home() {
     </>
   );
 }
+ 

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '../../utils/supabase/client'
-
+ 
 const REPORT_REASONS = [
   '內容不實',
   '人身攻擊 / 惡意言論',
@@ -9,7 +9,7 @@ const REPORT_REASONS = [
   '與此店家無關',
   '其他',
 ]
-
+ 
 export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number; isAdmin?: boolean }) {
   const [reviews, setReviews] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -21,37 +21,38 @@ export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number
   const [removeExistingImage, setRemoveExistingImage] = useState(false)
   const [savingId, setSavingId] = useState<number | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
-
+ 
   // 檢舉相關
   const [reportingId, setReportingId] = useState<string | null>(null)
   const [reportReason, setReportReason] = useState<string>('')
-  const [reportedIds, setReportedIds] = useState<Set<string>>(new Set()) // 從 DB 查
+  const [otherReason, setOtherReason] = useState<string>('')
+  const [reportedIds, setReportedIds] = useState<Set<string>>(new Set())
   const [submittingReport, setSubmittingReport] = useState(false)
-
+ 
   const editFileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
-
+ 
   useEffect(() => {
     const init = async () => {
       setLoading(true)
       const { data: { user } } = await supabase.auth.getUser()
       setCurrentUserId(user?.id ?? null)
-
+ 
       const [{ data: reviews }, { data: myReports }] = await Promise.all([
         supabase.from('cafe_reviews').select('*').eq('cafe_id', cafeId).order('created_at', { ascending: false }),
         user
           ? supabase.from('review_reports').select('review_id').eq('reporter_id', user.id)
           : Promise.resolve({ data: [] }),
       ])
-
+ 
       if (reviews) setReviews(reviews)
       if (myReports) setReportedIds(new Set(myReports.map((r: any) => r.review_id)))
       setLoading(false)
     }
     init()
   }, [cafeId])
-
-  // ── 編輯相關（原有邏輯不動）──────────────────────────
+ 
+  // ── 編輯相關 ──────────────────────────────────────────
   const handleEdit = (rv: any) => {
     setEditingId(rv.id)
     setEditContent(rv.content)
@@ -60,7 +61,7 @@ export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number
     setRemoveExistingImage(false)
     setReportingId(null)
   }
-
+ 
   const handleCancelEdit = () => {
     setEditingId(null)
     setEditContent('')
@@ -69,7 +70,7 @@ export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number
     setRemoveExistingImage(false)
     if (editFileInputRef.current) editFileInputRef.current.value = ''
   }
-
+ 
   const handleEditImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -78,13 +79,13 @@ export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number
     setEditImagePreview(URL.createObjectURL(file))
     setRemoveExistingImage(false)
   }
-
+ 
   const handleSave = async (rv: any) => {
     if (!editContent.trim()) return
     setSavingId(rv.id)
     const { data: { user } } = await supabase.auth.getUser()
     let newImageUrl: string | null | undefined = undefined
-
+ 
     if (removeExistingImage && !editImageFile) {
       newImageUrl = null
     } else if (editImageFile) {
@@ -95,10 +96,10 @@ export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number
       const { data: { publicUrl } } = supabase.storage.from('review-images').getPublicUrl(filePath)
       newImageUrl = publicUrl
     }
-
+ 
     const updateObj: any = { content: editContent }
     if (newImageUrl !== undefined) updateObj.image_url = newImageUrl
-
+ 
     const { error } = await supabase.from('cafe_reviews').update(updateObj).eq('id', rv.id)
     if (error) {
       alert('更新失敗：' + error.message)
@@ -112,7 +113,7 @@ export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number
     }
     setSavingId(null)
   }
-
+ 
   const handleDelete = async (id: number) => {
     if (!confirm('確定要刪除這則評論嗎？')) return
     setDeletingId(id)
@@ -127,35 +128,42 @@ export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number
       }, 250)
     }
   }
-
+ 
   // ── 檢舉相關 ──────────────────────────────────────────
   const openReport = (reviewId: string) => {
     setReportingId(reviewId)
     setReportReason('')
+    setOtherReason('')
     setEditingId(null)
   }
-
+ 
   const closeReport = () => {
     setReportingId(null)
     setReportReason('')
+    setOtherReason('')
   }
-
+ 
   const handleSubmitReport = async (rv: any) => {
     if (!reportReason) { alert('請選擇檢舉原因'); return }
+    // 選了「其他」但沒填原因
+    if (reportReason === '其他' && !otherReason.trim()) {
+      alert('請填寫檢舉原因'); return
+    }
     setSubmittingReport(true)
-
+ 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { alert('請先登入'); setSubmittingReport(false); return }
-
+ 
     const { error } = await supabase.from('review_reports').insert({
       review_id: rv.id,
       reporter_id: user.id,
       reason: reportReason,
+      // 只有選「其他」時才存 other_reason
+      other_reason: reportReason === '其他' ? otherReason.trim() : null,
     })
-
+ 
     if (error) {
       if (error.code === '23505') {
-        // unique constraint → 已檢舉過
         alert('您已經檢舉過這則留言了！')
       } else {
         alert('檢舉失敗：' + error.message)
@@ -166,7 +174,7 @@ export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number
     }
     setSubmittingReport(false)
   }
-
+ 
   return (
     <div className="mt-8">
       <style>{`
@@ -255,7 +263,6 @@ export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number
           max-width: 90vw; max-height: 90vh;
           border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
         }
-        /* 檢舉面板 */
         .report-panel {
           animation: reportPanelIn 0.2s ease;
           margin-top: 10px;
@@ -276,6 +283,19 @@ export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number
           border-color: #D97706; background: rgba(245,158,11,0.1);
           color: #92400E; font-weight: 700;
         }
+        .other-reason-textarea {
+          width: 100%; margin-top: 8px;
+          background: white; border: 1.5px solid rgba(245,158,11,0.4);
+          border-radius: 8px; padding: 8px 10px;
+          font-size: 12px; color: #2C1A0E; line-height: 1.6;
+          resize: none; outline: none; font-family: 'Lato', sans-serif;
+          transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .other-reason-textarea:focus {
+          border-color: #D97706;
+          box-shadow: 0 0 0 3px rgba(245,158,11,0.12);
+        }
+        .other-reason-textarea::placeholder { color: #C4B5A5; }
         .report-submit-btn {
           width: 100%; padding: 8px; border-radius: 8px; border: none;
           background: #D97706; color: white; font-size: 12px;
@@ -285,7 +305,7 @@ export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number
         .report-submit-btn:hover:not(:disabled) { background: #B45309; }
         .report-submit-btn:disabled { background: #C4B5A5; cursor: not-allowed; }
       `}</style>
-
+ 
       <LightboxProvider>
         {(lightboxSrc, openLightbox, closeLightbox) => (
           <>
@@ -294,7 +314,7 @@ export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number
                 <img src={lightboxSrc} alt="full size" onClick={e => e.stopPropagation()} />
               </div>
             )}
-
+ 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
               <span style={{ fontSize: 18, color: '#C9A87C' }}>✦</span>
               <h3 style={{ fontFamily: "'Noto Serif TC', serif", fontSize: 15, fontWeight: 700, color: '#2C1A0E', letterSpacing: '0.05em' }}>
@@ -312,7 +332,7 @@ export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number
               )}
               <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, rgba(201,168,124,0.4), transparent)' }} />
             </div>
-
+ 
             <div className="review-scroll" style={{ maxHeight: 360, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, paddingRight: 4 }}>
               {loading ? (
                 <div style={{ textAlign: 'center', padding: '20px 0', color: '#C9A87C', fontSize: 13, opacity: 0.7 }}>☕ 載入中...</div>
@@ -330,7 +350,7 @@ export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number
                   const alreadyReported = reportedIds.has(rv.id)
                   const editingCurrentImage = removeExistingImage ? null : rv.image_url
                   const editingDisplayImage = editImagePreview ?? editingCurrentImage
-
+ 
                   return (
                     <div
                       key={rv.id}
@@ -356,7 +376,7 @@ export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number
                           <span style={{ fontSize: 10, color: '#C9A87C', background: 'rgba(201,168,124,0.1)', padding: '2px 8px', borderRadius: 99, fontWeight: 600 }}>
                             {new Date(rv.created_at).toLocaleDateString('zh-TW', { month: 'short', day: 'numeric' })}
                           </span>
-
+ 
                           {!isEditingThis && !isReportingThis && (
                             <>
                               {isOwner && (
@@ -371,7 +391,6 @@ export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number
                                   🗑️{isAdmin && !isOwner ? ' 管理刪除' : ''}
                                 </button>
                               )}
-                              {/* 檢舉按鈕：非自己的留言、非管理員模式才顯示 */}
                               {!isOwner && !isAdmin && currentUserId && (
                                 <button
                                   className={`icon-btn report-btn${alreadyReported ? ' reported' : ''}`}
@@ -383,13 +402,13 @@ export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number
                               )}
                             </>
                           )}
-
+ 
                           {isReportingThis && (
                             <button className="icon-btn cancel-btn" style={{ fontSize: 11 }} onClick={closeReport}>✕ 取消</button>
                           )}
                         </div>
                       </div>
-
+ 
                       {/* 編輯模式 */}
                       {isEditingThis ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -442,6 +461,7 @@ export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number
                             </button>
                           </div>
                         </div>
+ 
                       ) : isReportingThis ? (
                         /* 檢舉面板 */
                         <div className="report-panel">
@@ -453,16 +473,37 @@ export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number
                               <button
                                 key={reason}
                                 className={`report-reason-btn${reportReason === reason ? ' selected' : ''}`}
-                                onClick={() => setReportReason(reason)}
+                                onClick={() => {
+                                  setReportReason(reason)
+                                  if (reason !== '其他') setOtherReason('')
+                                }}
                               >
                                 {reportReason === reason ? '● ' : '○ '}{reason}
                               </button>
                             ))}
                           </div>
+ 
+                          {/* 「其他」選項展開文字輸入框 */}
+                          {reportReason === '其他' && (
+                            <textarea
+                              className="other-reason-textarea"
+                              rows={3}
+                              placeholder="請描述檢舉原因（必填）"
+                              value={otherReason}
+                              onChange={e => setOtherReason(e.target.value)}
+                              maxLength={200}
+                              autoFocus
+                            />
+                          )}
+ 
                           <button
                             className="report-submit-btn"
                             onClick={() => handleSubmitReport(rv)}
-                            disabled={!reportReason || submittingReport}
+                            disabled={
+                              !reportReason ||
+                              submittingReport ||
+                              (reportReason === '其他' && !otherReason.trim())
+                            }
                           >
                             {submittingReport ? '送出中...' : '確認檢舉'}
                           </button>
@@ -470,6 +511,7 @@ export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number
                             感謝您的回報，我們會盡快審查
                           </p>
                         </div>
+ 
                       ) : (
                         /* 正常顯示 */
                         <>
@@ -496,10 +538,11 @@ export default function ReviewList({ cafeId, isAdmin = false }: { cafeId: number
     </div>
   )
 }
-
+ 
 function LightboxProvider({ children }: {
   children: (src: string | null, open: (src: string) => void, close: () => void) => React.ReactNode
 }) {
   const [src, setSrc] = useState<string | null>(null)
   return <>{children(src, setSrc, () => setSrc(null))}</>
 }
+ 
