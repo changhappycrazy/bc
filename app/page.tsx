@@ -82,75 +82,36 @@ function StarRating({ rating }: { rating: number }) {
  
 function OpeningHoursBlock({ cafeId, openingHours }: { cafeId: number; openingHours: OpeningHour[] }) {
   const [expanded, setExpanded] = useState(false);
- 
   const DAY_NAMES = ['', '週一', '週二', '週三', '週四', '週五', '週六', '週日'];
- 
   const now = new Date();
   const twNow = new Date(now.getTime() + 8 * 60 * 60 * 1000);
   const todayDow = twNow.getUTCDay() === 0 ? 7 : twNow.getUTCDay();
- 
-  const cafeHours = openingHours
-    .filter(h => h.id === cafeId)
-    .sort((a, b) => a.day_of_week - b.day_of_week);
- 
+  const cafeHours = openingHours.filter(h => h.id === cafeId).sort((a, b) => a.day_of_week - b.day_of_week);
   const todayRecord = cafeHours.find(h => h.day_of_week === todayDow);
- 
   const formatTime = (t: string) => t.slice(0, 5);
- 
   const todayLabel = todayRecord
-    ? todayRecord.is_closed
-      ? '今日公休'
-      : `${formatTime(todayRecord.open_time)} – ${formatTime(todayRecord.close_time)}`
+    ? todayRecord.is_closed ? '今日公休' : `${formatTime(todayRecord.open_time)} – ${formatTime(todayRecord.close_time)}`
     : null;
- 
   if (!todayLabel && cafeHours.length === 0) return null;
- 
   return (
     <div style={{ marginTop: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{ fontSize: 13, color: '#7A5C3A' }}>🕐</span>
-        <span style={{
-          fontSize: 13, color: todayRecord?.is_closed ? '#DC2626' : '#7A5C3A', fontWeight: 600
-        }}>
+        <span style={{ fontSize: 13, color: todayRecord?.is_closed ? '#DC2626' : '#7A5C3A', fontWeight: 600 }}>
           {todayLabel ?? '無營業資料'}
         </span>
         {cafeHours.length > 0 && (
-          <button
-            onClick={() => setExpanded(p => !p)}
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              padding: '2px 6px', borderRadius: 6,
-              color: '#C9A87C', fontSize: 12, fontWeight: 700,
-              transition: 'transform 0.2s',
-              transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
-              display: 'flex', alignItems: 'center',
-            }}
-            title="查看整週營業時間"
-          >
-            ▾
-          </button>
+          <button onClick={() => setExpanded(p => !p)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', borderRadius: 6, color: '#C9A87C', fontSize: 12, fontWeight: 700, transition: 'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', display: 'flex', alignItems: 'center' }} title="查看整週營業時間">▾</button>
         )}
       </div>
- 
       {expanded && (
-        <div style={{
-          marginTop: 8, background: 'white', borderRadius: 12,
-          border: '1px solid rgba(201,168,124,0.2)',
-          overflow: 'hidden', fontSize: 12,
-        }}>
+        <div style={{ marginTop: 8, background: 'white', borderRadius: 12, border: '1px solid rgba(201,168,124,0.2)', overflow: 'hidden', fontSize: 12 }}>
           {[1,2,3,4,5,6,7].map(dow => {
             const rec = cafeHours.find(h => h.day_of_week === dow);
             const isToday = dow === todayDow;
             return (
-              <div key={dow} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '7px 14px',
-                background: isToday ? 'rgba(201,168,124,0.08)' : 'transparent',
-                borderLeft: isToday ? '3px solid #C9A87C' : '3px solid transparent',
-              }}>
-                <span style={{ color: isToday ? '#2C1A0E' : '#7A5C3A', fontWeight: isToday ? 700 : 400 }}>
-                  {DAY_NAMES[dow]}
-                </span>
+              <div key={dow} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 14px', background: isToday ? 'rgba(201,168,124,0.08)' : 'transparent', borderLeft: isToday ? '3px solid #C9A87C' : '3px solid transparent' }}>
+                <span style={{ color: isToday ? '#2C1A0E' : '#7A5C3A', fontWeight: isToday ? 700 : 400 }}>{DAY_NAMES[dow]}</span>
                 <span style={{ color: !rec || rec.is_closed ? '#DC2626' : '#4A3728', fontWeight: isToday ? 700 : 400 }}>
                   {!rec ? '—' : rec.is_closed ? '公休' : `${formatTime(rec.open_time)} – ${formatTime(rec.close_time)}`}
                 </span>
@@ -159,6 +120,62 @@ function OpeningHoursBlock({ cafeId, openingHours }: { cafeId: number; openingHo
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── 收藏清單側邊面板 ──────────────────────────────────────────
+function FavoritesPanel({ cafes, favorites, onClose, onSelect, onToggleFavorite }: {
+  cafes: Cafe[];
+  favorites: Set<number>;
+  onClose: () => void;
+  onSelect: (cafe: Cafe) => void;
+  onToggleFavorite: (cafeId: number) => void;
+}) {
+  const favCafes = cafes.filter(c => favorites.has(c.id));
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex' }}>
+      <div style={{ flex: 1, background: 'rgba(44,26,14,0.4)', backdropFilter: 'blur(2px)' }} onClick={onClose} />
+      <div style={{ width: 340, background: '#FDF8F2', display: 'flex', flexDirection: 'column', boxShadow: '-8px 0 40px rgba(44,26,14,0.2)', animation: 'slideInRight 0.3s cubic-bezier(0.4,0,0.2,1)' }}>
+        <style>{`
+          @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+          .fav-card { background: white; border-radius: 14px; overflow: hidden; border: 1.5px solid rgba(201,168,124,0.2); box-shadow: 0 2px 10px rgba(44,26,14,0.06); cursor: pointer; transition: all 0.25s cubic-bezier(0.4,0,0.2,1); }
+          .fav-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(44,26,14,0.1); border-color: rgba(201,168,124,0.5); }
+        `}</style>
+        <div style={{ background: '#2C1A0E', padding: '24px 20px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontFamily: 'Noto Serif TC, serif', fontSize: 18, fontWeight: 700, color: '#C9A87C' }}>❤️ 我的收藏</div>
+            <div style={{ fontSize: 11, color: 'rgba(201,168,124,0.5)', marginTop: 3 }}>{favCafes.length} 個收藏的咖啡廳</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'rgba(201,168,124,0.15)', border: '1px solid rgba(201,168,124,0.3)', color: '#C9A87C', borderRadius: 10, width: 34, height: 34, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>✕</button>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 12, scrollbarWidth: 'thin', scrollbarColor: '#C9A87C transparent' }}>
+          {favCafes.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#B09B8A' }}>
+              <div style={{ fontSize: 40, marginBottom: 16, opacity: 0.4 }}>♡</div>
+              <p style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.8 }}>還沒有收藏的咖啡廳<br/>點擊愛心來新增吧！</p>
+            </div>
+          ) : favCafes.map(cafe => (
+            <div key={cafe.id} className="fav-card" onClick={() => { onSelect(cafe); onClose(); }}>
+              {cafe.image_url && <img src={cafe.image_url} style={{ width: '100%', height: 80, objectFit: 'cover', display: 'block' }} />}
+              <div style={{ padding: '10px 13px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ fontFamily: 'Noto Serif TC, serif', fontSize: 13, fontWeight: 700, color: '#2C1A0E', lineHeight: 1.4, flex: 1 }}>{cafe.name}</div>
+                  <button
+                    onClick={e => { e.stopPropagation(); onToggleFavorite(cafe.id); }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#E53E3E', padding: '0 0 0 8px', flexShrink: 0, lineHeight: 1 }}
+                    title="取消收藏"
+                  >♥</button>
+                </div>
+                <div style={{ fontSize: 11, color: '#B09B8A', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: '#F59E0B', fontWeight: 700 }}>★ {(cafe.rating || 0).toFixed(1)}</span>
+                  {cafe.address && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cafe.address}</span>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -178,11 +195,12 @@ export default function Home() {
   const [filterSpecialty, setFilterSpecialty] = useState(false);
   const [filterPourOver, setFilterPourOver] = useState(false);
   const [filterPrices, setFilterPrices] = useState<string[]>([]);
-  
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [nickname, setNickname] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [favorites, setFavorites] = useState<Set<number>>(new Set());
+  const [showFavorites, setShowFavorites] = useState(false);
   const { location, status, errorMsg, requestLocation } = useGeolocation();
  
   useEffect(() => {
@@ -194,6 +212,7 @@ export default function Home() {
       if (currentUser) {
         setNickname(currentUser.user_metadata.display_name || currentUser.user_metadata.full_name || '咖啡愛好者');
         setIsAdmin(currentUser.email === ADMIN_EMAIL);
+        fetchFavorites(currentUser.id);
       }
       setAuthLoading(false);
     };
@@ -206,17 +225,16 @@ export default function Home() {
       if (currentUser) {
         setNickname(currentUser.user_metadata.display_name || currentUser.user_metadata.full_name || '咖啡愛好者');
         setIsAdmin(currentUser.email === ADMIN_EMAIL);
+        fetchFavorites(currentUser.id);
       } else {
         setIsAdmin(false);
+        setFavorites(new Set());
       }
     });
  
     async function fetchCafes() {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('cafes')
-        .select('*')
-        .order('rating', { ascending: false });
+      const { data, error } = await supabase.from('cafes').select('*').order('rating', { ascending: false });
       if (error) console.error('Supabase error:', error);
       else setCafes(data || []);
       setLoading(false);
@@ -233,34 +251,46 @@ export default function Home() {
  
     return () => subscription.unsubscribe();
   }, []);
+
+  const fetchFavorites = async (userId: string) => {
+    const { data } = await supabase.from('cafe_favorites').select('cafe_id').eq('user_id', userId);
+    if (data) setFavorites(new Set(data.map((r: any) => r.cafe_id)));
+  };
+
+  const toggleFavorite = async (cafeId: number, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!user) return;
+    const isFav = favorites.has(cafeId);
+    setFavorites(prev => {
+      const next = new Set(prev);
+      isFav ? next.delete(cafeId) : next.add(cafeId);
+      return next;
+    });
+    if (isFav) {
+      await supabase.from('cafe_favorites').delete().eq('user_id', user.id).eq('cafe_id', cafeId);
+    } else {
+      await supabase.from('cafe_favorites').insert({ user_id: user.id, cafe_id: cafeId });
+    }
+  };
  
   const isOpenNow = (cafeId: number): boolean | null => {
     const now = new Date();
     const twNow = new Date(now.getTime() + 8 * 60 * 60 * 1000);
     const dayOfWeek = twNow.getUTCDay() === 0 ? 7 : twNow.getUTCDay();
     const currentMinutes = twNow.getUTCHours() * 60 + twNow.getUTCMinutes();
- 
-    const todayRecord = openingHours.find(
-      h => h.id === cafeId && h.day_of_week === dayOfWeek
-    );
- 
+    const todayRecord = openingHours.find(h => h.id === cafeId && h.day_of_week === dayOfWeek);
     if (!todayRecord) return null;
     if (todayRecord.is_closed) return false;
- 
     const [openH, openM] = todayRecord.open_time.split(':').map(Number);
     const [closeH, closeM] = todayRecord.close_time.split(':').map(Number);
     const openMinutes = openH * 60 + openM;
     let closeMinutes = closeH * 60 + closeM;
     if (closeMinutes === 0) closeMinutes = 24 * 60;
- 
     return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
   };
  
   const handleLogin = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin }
-    });
+    await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } });
   };
  
   const handleLogout = async () => {
@@ -269,34 +299,14 @@ export default function Home() {
  
   const updateNickname = async () => {
     if (!user) return;
-
     const chineseCount = (nickname.match(/[\u4e00-\u9fa5]/g) || []).length;
     const otherCount = nickname.length - chineseCount;
-
-    if (chineseCount > 6) {
-      alert('暱稱中的中文字數不能超過 6 個字喔！');
-      return;
-    }
-    if (otherCount > 11) {
-      alert('暱稱中的英文或數字不能超過 11 個字元喔！');
-      return;
-    }
-    if (nickname.trim() === '') {
-      alert('暱稱不能為空！');
-      return;
-    }
-
-    const { error: authError } = await supabase.auth.updateUser({
-      data: { display_name: nickname }
-    });
-    if (authError) {
-      alert('更新失敗：' + authError.message);
-      return;
-    }
-    const { error: reviewError } = await supabase
-      .from('cafe_reviews')
-      .update({ user_name: nickname })
-      .eq('user_id', user.id);
+    if (chineseCount > 6) { alert('暱稱中的中文字數不能超過 6 個字喔！'); return; }
+    if (otherCount > 11) { alert('暱稱中的英文或數字不能超過 11 個字元喔！'); return; }
+    if (nickname.trim() === '') { alert('暱稱不能為空！'); return; }
+    const { error: authError } = await supabase.auth.updateUser({ data: { display_name: nickname } });
+    if (authError) { alert('更新失敗：' + authError.message); return; }
+    const { error: reviewError } = await supabase.from('cafe_reviews').update({ user_name: nickname }).eq('user_id', user.id);
     if (reviewError) {
       alert('暱稱已更新，但評論同步失敗：' + reviewError.message);
     } else {
@@ -373,7 +383,9 @@ export default function Home() {
         .user-info { display: flex; align-items: center; gap: 12px; }
         .user-avatar { width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--latte); }
         .user-name { font-size: 13px; color: var(--espresso); font-weight: 700; }
-        .edit-link { font-size: 10px; color: var(--latte); cursor: pointer; text-decoration: underline; margin-top: 1px; }
+        .edit-link { font-size: 10px; color: var(--latte); cursor: pointer; text-decoration: underline; }
+        .fav-link { font-size: 10px; color: #E53E3E; cursor: pointer; text-decoration: underline; transition: color 0.2s; }
+        .fav-link:hover { color: #C53030; }
         .auth-btn { padding: 6px 12px; border-radius: 8px; font-size: 11px; cursor: pointer; border: none; font-weight: 600; }
         .logout-btn { background: #F8F4EF; color: #999; transition: all 0.2s; }
         .logout-btn:hover { background: #EEE; color: #666; }
@@ -399,9 +411,22 @@ export default function Home() {
         .detail-name { font-family: 'Noto Serif TC', serif; font-size: 22px; font-weight: 700; color: var(--espresso); }
         .maps-btn { display: block; margin-top: 16px; padding: 14px; text-align: center; background: var(--espresso); color: var(--latte); border-radius: 14px; text-decoration: none; font-size: 14px; font-weight: 700; transition: all 0.3s; box-shadow: 0 4px 12px rgba(44,26,14,0.15); }
         .maps-btn:hover { opacity: 0.95; transform: scale(1.02); }
+        .heart-btn { background: none; border: none; cursor: pointer; line-height: 1; padding: 2px 3px; transition: transform 0.2s; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .heart-btn:hover { transform: scale(1.3); }
         @keyframes pulse-green { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .dot-open { animation: pulse-green 2s ease-in-out infinite; }
       `}</style>
+
+      {/* 收藏面板 */}
+      {showFavorites && (
+        <FavoritesPanel
+          cafes={cafes}
+          favorites={favorites}
+          onClose={() => setShowFavorites(false)}
+          onSelect={setSelectedCafe}
+          onToggleFavorite={toggleFavorite}
+        />
+      )}
  
       <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
         <aside className="sidebar">
@@ -467,7 +492,13 @@ export default function Home() {
                         </span>
                       )}
                     </div>
-                    <span className="edit-link" onClick={() => setIsEditing(true)}>修改暱稱</span>
+                    {/* 修改暱稱 + 我的收藏 */}
+                    <div style={{ display: 'flex', gap: 10, marginTop: 1 }}>
+                      <span className="edit-link" onClick={() => setIsEditing(true)}>修改暱稱</span>
+                      <span className="fav-link" onClick={() => setShowFavorites(true)}>
+                        ❤️ 我的收藏{favorites.size > 0 ? ` (${favorites.size})` : ''}
+                      </span>
+                    </div>
                   </>
                 )}
               </div>
@@ -507,12 +538,13 @@ export default function Home() {
               <div style={{ padding: 20, textAlign: 'center', opacity: 0.5 }}>咖啡豆研磨中...</div>
             ) : sorted.map(cafe => {
               const openStatus = isOpenNow(cafe.id);
+              const isFav = favorites.has(cafe.id);
               return (
                 <div key={cafe.id} className={`cafe-card ${selectedCafe?.id === cafe.id ? 'selected' : ''}`} onClick={() => setSelectedCafe(cafe)}>
                   {cafe.image_url && <img src={cafe.image_url} className="cafe-card-img" />}
                   <div className="cafe-card-body">
                     <div className="cafe-card-name">{cafe.name}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <StarRating rating={cafe.rating || 0} />
                       {location && (
                         <span style={{ fontSize: 11, color: '#C9A87C', fontWeight: 600 }}>
@@ -522,21 +554,32 @@ export default function Home() {
                       <span style={{ fontSize: '11px', color: '#B09B8A', letterSpacing: '0.02em' }}>
                         ({cafe.review_count || 0})
                       </span>
-                      {openStatus !== null && (
-                        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <div
-                            className={openStatus ? 'dot-open' : ''}
-                            style={{
-                              width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-                              background: openStatus ? '#22C55E' : '#EF4444',
-                              boxShadow: openStatus ? '0 0 0 2px rgba(34,197,94,0.2)' : '0 0 0 2px rgba(239,68,68,0.2)',
-                            }}
-                          />
-                          <span style={{ fontSize: 10, fontWeight: 600, color: openStatus ? '#16A34A' : '#DC2626' }}>
-                            {openStatus ? '營業中' : '休息中'}
-                          </span>
-                        </div>
-                      )}
+                      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {openStatus !== null && (
+                          <>
+                            <div
+                              className={openStatus ? 'dot-open' : ''}
+                              style={{
+                                width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                                background: openStatus ? '#22C55E' : '#EF4444',
+                                boxShadow: openStatus ? '0 0 0 2px rgba(34,197,94,0.2)' : '0 0 0 2px rgba(239,68,68,0.2)',
+                              }}
+                            />
+                            <span style={{ fontSize: 10, fontWeight: 600, color: openStatus ? '#16A34A' : '#DC2626' }}>
+                              {openStatus ? '營業中' : '休息中'}
+                            </span>
+                          </>
+                        )}
+                        {/* 愛心按鈕 */}
+                        <button
+                          className="heart-btn"
+                          onClick={e => toggleFavorite(cafe.id, e)}
+                          title={isFav ? '取消收藏' : '加入收藏'}
+                          style={{ fontSize: 15, color: isFav ? '#E53E3E' : '#D4C4B0' }}
+                        >
+                          {isFav ? '♥' : '♡'}
+                        </button>
+                      </div>
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
                       {cafe.tags?.includes('近捷運站') && <span style={tagStyle}>近捷運站</span>}
@@ -597,18 +640,29 @@ export default function Home() {
               <div className="detail-body">
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                   <div className="detail-name">{selectedCafe.name}</div>
-                  {(() => {
-                    const openStatus = isOpenNow(selectedCafe.id);
-                    if (openStatus === null) return null;
-                    return (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, marginTop: 4, background: openStatus ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)', padding: '4px 10px', borderRadius: 99, border: `1px solid ${openStatus ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}` }}>
-                        <div className={openStatus ? 'dot-open' : ''} style={{ width: 7, height: 7, borderRadius: '50%', background: openStatus ? '#22C55E' : '#EF4444', flexShrink: 0 }} />
-                        <span style={{ fontSize: 11, fontWeight: 700, color: openStatus ? '#16A34A' : '#DC2626' }}>
-                          {openStatus ? '營業中' : '休息中'}
-                        </span>
-                      </div>
-                    );
-                  })()}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginTop: 4 }}>
+                    {/* 詳細面板愛心 */}
+                    <button
+                      className="heart-btn"
+                      onClick={e => toggleFavorite(selectedCafe.id, e)}
+                      title={favorites.has(selectedCafe.id) ? '取消收藏' : '加入收藏'}
+                      style={{ fontSize: 22, color: favorites.has(selectedCafe.id) ? '#E53E3E' : '#D4C4B0' }}
+                    >
+                      {favorites.has(selectedCafe.id) ? '♥' : '♡'}
+                    </button>
+                    {(() => {
+                      const openStatus = isOpenNow(selectedCafe.id);
+                      if (openStatus === null) return null;
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: openStatus ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)', padding: '4px 10px', borderRadius: 99, border: `1px solid ${openStatus ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}` }}>
+                          <div className={openStatus ? 'dot-open' : ''} style={{ width: 7, height: 7, borderRadius: '50%', background: openStatus ? '#22C55E' : '#EF4444', flexShrink: 0 }} />
+                          <span style={{ fontSize: 11, fontWeight: 700, color: openStatus ? '#16A34A' : '#DC2626' }}>
+                            {openStatus ? '營業中' : '休息中'}
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
                 <div style={{ height: '1.5px', background: 'rgba(201,168,124,0.2)', margin: '20px 0' }} />
                 <p style={{ fontSize: 14, color: '#6D5D4E', lineHeight: 1.8, letterSpacing: '0.01em' }}>{selectedCafe.address}</p>
