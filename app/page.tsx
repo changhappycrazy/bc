@@ -130,7 +130,6 @@ function OpeningHoursBlock({ cafeId, openingHours }: { cafeId: number; openingHo
   );
 }
  
-// ── 收藏清單側邊面板 ──────────────────────────────────────────
 function FavoritesPanel({ cafes, favorites, onClose, onSelect, onToggleFavorite }: {
   cafes: Cafe[];
   favorites: Set<number>;
@@ -153,7 +152,7 @@ function FavoritesPanel({ cafes, favorites, onClose, onSelect, onToggleFavorite 
             <div style={{ fontFamily: 'Noto Serif TC, serif', fontSize: 18, fontWeight: 700, color: '#C9A87C' }}>❤️ 我的收藏</div>
             <div style={{ fontSize: 11, color: 'rgba(201,168,124,0.5)', marginTop: 3 }}>{favCafes.length} 個收藏的咖啡廳</div>
           </div>
-          <button onClick={onClose} style={{ background: 'rgba(201,168,124,0.15)', border: '1px solid rgba(201,168,124,0.3)', color: '#C9A87C', borderRadius: 10, width: 34, height: 34, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>✕</button>
+          <button onClick={onClose} style={{ background: 'rgba(201,168,124,0.15)', border: '1px solid rgba(201,168,124,0.3)', color: '#C9A87C', borderRadius: 10, width: 34, height: 34, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 12, scrollbarWidth: 'thin', scrollbarColor: '#C9A87C transparent' }}>
           {favCafes.length === 0 ? (
@@ -167,11 +166,7 @@ function FavoritesPanel({ cafes, favorites, onClose, onSelect, onToggleFavorite 
               <div style={{ padding: '10px 13px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div style={{ fontFamily: 'Noto Serif TC, serif', fontSize: 13, fontWeight: 700, color: '#2C1A0E', lineHeight: 1.4, flex: 1 }}>{cafe.name}</div>
-                  <button
-                    onClick={e => { e.stopPropagation(); onToggleFavorite(cafe.id); }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#E53E3E', padding: '0 0 0 8px', flexShrink: 0, lineHeight: 1 }}
-                    title="取消收藏"
-                  >♥</button>
+                  <button onClick={e => { e.stopPropagation(); onToggleFavorite(cafe.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#E53E3E', padding: '0 0 0 8px', flexShrink: 0, lineHeight: 1 }} title="取消收藏">♥</button>
                 </div>
                 <div style={{ fontSize: 11, color: '#B09B8A', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ color: '#F59E0B', fontWeight: 700 }}>★ {(cafe.rating || 0).toFixed(1)}</span>
@@ -189,7 +184,6 @@ function FavoritesPanel({ cafes, favorites, onClose, onSelect, onToggleFavorite 
 export default function Home() {
   const [cafes, setCafes] = useState<Cafe[]>([]);
   const [priceRanges, setPriceRanges] = useState<PriceRange[]>([]);
-  // priceRanges 從 cafes join 資料推導，不需額外 query
   const [openingHours, setOpeningHours] = useState<OpeningHour[]>([]);
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(true);
@@ -209,7 +203,7 @@ export default function Home() {
   const [isEditing, setIsEditing] = useState(false);
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
   const [showFavorites, setShowFavorites] = useState(false);
-  const { location, status, errorMsg, requestLocation } = useGeolocation();
+  const { location, status, requestLocation } = useGeolocation();
  
   useEffect(() => {
     const checkUser = async () => {
@@ -224,9 +218,7 @@ export default function Home() {
       }
       setAuthLoading(false);
     };
- 
     checkUser();
- 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
@@ -239,7 +231,6 @@ export default function Home() {
         setFavorites(new Set());
       }
     });
- 
     async function fetchCafes() {
       setLoading(true);
       const { data, error } = await supabase
@@ -250,7 +241,6 @@ export default function Home() {
       else {
         const cafesData: Cafe[] = data || [];
         setCafes(cafesData);
-        // 從 join 資料推導不重複的價格區間，依 id 排序
         const seen = new Set<number>();
         const derived: PriceRange[] = [];
         for (const c of cafesData) {
@@ -264,16 +254,13 @@ export default function Home() {
       }
       setLoading(false);
     }
- 
     async function fetchOpeningHours() {
       const { data, error } = await supabase.from('opening_hours').select('*');
       if (error) console.error('Opening hours error:', error);
       else setOpeningHours(data || []);
     }
- 
     fetchCafes();
     fetchOpeningHours();
- 
     return () => subscription.unsubscribe();
   }, []);
  
@@ -344,8 +331,7 @@ export default function Home() {
     if (searchTerm) {
       const tokens = searchTerm.toLowerCase().split(/[\s\u3000，,、。！!？?]+/).filter(Boolean);
       const target = (c.name + (c.full_name || '') + (c.address || '')).toLowerCase();
-      const match = tokens.every(token => target.includes(token));
-      if (!match) return false;
+      if (!tokens.every(token => target.includes(token))) return false;
     }
     if (filterDelivery && !c.delivery) return false;
     if (filterPet && !c.is_pet_friendly) return false;
@@ -361,11 +347,9 @@ export default function Home() {
   const sorted = location
     ? [...filtered].sort((a, b) =>
         getDistance(location.lat, location.lng, a.lat, a.lng) -
-        getDistance(location.lat, location.lng, b.lat, b.lng)
-      )
+        getDistance(location.lat, location.lng, b.lat, b.lng))
     : filtered;
  
-  // 單選：點同一個取消，點不同的切換
   const togglePriceFilter = (id: number) => {
     setFilterPriceIds(prev => prev.includes(id) ? [] : [id]);
   };
@@ -446,8 +430,7 @@ export default function Home() {
         @keyframes pulse-green { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .dot-open { animation: pulse-green 2s ease-in-out infinite; }
       `}</style>
- 
-      {/* 收藏面板 */}
+
       {showFavorites && (
         <FavoritesPanel
           cafes={cafes}
@@ -508,18 +491,14 @@ export default function Home() {
                       <input style={{ fontSize: '12px', padding: '4px 8px', border: '1px solid var(--latte)', borderRadius: '6px', width: '90px' }} value={nickname} onChange={e => setNickname(e.target.value)} placeholder="中6 / 英11" />
                       <button className="auth-btn" style={{ background: 'var(--espresso)', color: 'var(--latte)' }} onClick={updateNickname}>存</button>
                     </div>
-                    <span style={{ fontSize: '9px', color: '#EF4444', scale: '0.85', transformOrigin: 'left' }}>
-                      (限中6字 / 英11字)
-                    </span>
+                    <span style={{ fontSize: '9px', color: '#EF4444', scale: '0.85', transformOrigin: 'left' }}>(限中6字 / 英11字)</span>
                   </div>
                 ) : (
                   <>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span className="user-name">{nickname}</span>
                       {isAdmin && (
-                        <span style={{ fontSize: 9, background: '#DC2626', color: 'white', padding: '1px 6px', borderRadius: 99, fontWeight: 700, letterSpacing: '0.05em' }}>
-                          管理員
-                        </span>
+                        <span style={{ fontSize: 9, background: '#DC2626', color: 'white', padding: '1px 6px', borderRadius: 99, fontWeight: 700, letterSpacing: '0.05em' }}>管理員</span>
                       )}
                     </div>
                     <div style={{ display: 'flex', gap: 10, marginTop: 1 }}>
@@ -553,11 +532,7 @@ export default function Home() {
             <div className="filter-label" style={{ marginTop: 10 }}>消費金額</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {priceRanges.filter(pr => pr.id !== 4).map(pr => (
-                <button
-                  key={pr.id}
-                  className={`toggle-btn ${filterPriceIds.includes(pr.id) ? 'active' : ''}`}
-                  onClick={() => togglePriceFilter(pr.id)}
-                >
+                <button key={pr.id} className={`toggle-btn ${filterPriceIds.includes(pr.id) ? 'active' : ''}`} onClick={() => togglePriceFilter(pr.id)}>
                   {pr.display_text}
                 </button>
               ))}
@@ -583,31 +558,15 @@ export default function Home() {
                           📍 {formatDistance(getDistance(location.lat, location.lng, cafe.lat, cafe.lng))}
                         </span>
                       )}
-                      <span style={{ fontSize: '11px', color: '#B09B8A', letterSpacing: '0.02em' }}>
-                        ({cafe.review_count || 0})
-                      </span>
+                      <span style={{ fontSize: '11px', color: '#B09B8A', letterSpacing: '0.02em' }}>({cafe.review_count || 0})</span>
                       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
                         {openStatus !== null && (
                           <>
-                            <div
-                              className={openStatus ? 'dot-open' : ''}
-                              style={{
-                                width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-                                background: openStatus ? '#22C55E' : '#EF4444',
-                                boxShadow: openStatus ? '0 0 0 2px rgba(34,197,94,0.2)' : '0 0 0 2px rgba(239,68,68,0.2)',
-                              }}
-                            />
-                            <span style={{ fontSize: 10, fontWeight: 600, color: openStatus ? '#16A34A' : '#DC2626' }}>
-                              {openStatus ? '營業中' : '休息中'}
-                            </span>
+                            <div className={openStatus ? 'dot-open' : ''} style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: openStatus ? '#22C55E' : '#EF4444', boxShadow: openStatus ? '0 0 0 2px rgba(34,197,94,0.2)' : '0 0 0 2px rgba(239,68,68,0.2)' }} />
+                            <span style={{ fontSize: 10, fontWeight: 600, color: openStatus ? '#16A34A' : '#DC2626' }}>{openStatus ? '營業中' : '休息中'}</span>
                           </>
                         )}
-                        <button
-                          className="heart-btn"
-                          onClick={e => toggleFavorite(cafe.id, e)}
-                          title={isFav ? '取消收藏' : '加入收藏'}
-                          style={{ fontSize: 15, color: isFav ? '#E53E3E' : '#D4C4B0' }}
-                        >
+                        <button className="heart-btn" onClick={e => toggleFavorite(cafe.id, e)} title={isFav ? '取消收藏' : '加入收藏'} style={{ fontSize: 15, color: isFav ? '#E53E3E' : '#D4C4B0' }}>
                           {isFav ? '♥' : '♡'}
                         </button>
                       </div>
@@ -630,34 +589,30 @@ export default function Home() {
  
         <div className="map-area">
           <Map cafes={sorted} openingHours={openingHours} userLocation={location} />
+
           <Link
             href="/fortune"
-            style={{
-              position: 'absolute', bottom: '20px', left: '20px', zIndex: 1000,
-              background: 'var(--espresso)', color: 'var(--latte)',
-              padding: '12px 20px', borderRadius: '50px', textDecoration: 'none',
-              boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-              display: 'flex', alignItems: 'center', gap: '8px',
-              fontWeight: 'bold', fontSize: '14px', transition: 'transform 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            style={{ position: 'absolute', bottom: '20px', left: '20px', zIndex: 1000, background: 'var(--espresso)', color: 'var(--latte)', padding: '12px 20px', borderRadius: '50px', textDecoration: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '14px', transition: 'transform 0.2s' }}
+            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
           >
             🔮 不知道去哪？試試咖啡運勢
           </Link>
+
+          {/* 聯絡信箱提示 */}
+          <div style={{ position: 'absolute', bottom: '20px', right: isAdmin ? '180px' : '20px', zIndex: 1000, background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(6px)', border: '1px solid rgba(201,168,124,0.3)', borderRadius: '12px', padding: '8px 14px', fontSize: 11, color: '#7A5C3A', lineHeight: 1.6, boxShadow: '0 2px 12px rgba(44,26,14,0.1)', maxWidth: 240 }}>
+            📮 若有其他問題可寄信至<br />
+            <a href="mailto:satestbc@gmail.com" style={{ color: '#C9A87C', fontWeight: 700, textDecoration: 'none', wordBreak: 'break-all' }}>
+              satestbc@gmail.com
+            </a>
+          </div>
+
           {isAdmin && (
             <Link
               href="/admin"
-              style={{
-                position: 'absolute', bottom: '20px', right: '20px', zIndex: 1000,
-                background: '#DC2626', color: 'white',
-                padding: '12px 20px', borderRadius: '50px', textDecoration: 'none',
-                boxShadow: '0 4px 15px rgba(220,38,38,0.35)',
-                display: 'flex', alignItems: 'center', gap: '8px',
-                fontWeight: 'bold', fontSize: '14px', transition: 'transform 0.2s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              style={{ position: 'absolute', bottom: '20px', right: '20px', zIndex: 1000, background: '#DC2626', color: 'white', padding: '12px 20px', borderRadius: '50px', textDecoration: 'none', boxShadow: '0 4px 15px rgba(220,38,38,0.35)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '14px', transition: 'transform 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
             >
               🛡️ 管理後台
             </Link>
@@ -672,12 +627,7 @@ export default function Home() {
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                   <div className="detail-name">{selectedCafe.name}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginTop: 4 }}>
-                    <button
-                      className="heart-btn"
-                      onClick={e => toggleFavorite(selectedCafe.id, e)}
-                      title={favorites.has(selectedCafe.id) ? '取消收藏' : '加入收藏'}
-                      style={{ fontSize: 22, color: favorites.has(selectedCafe.id) ? '#E53E3E' : '#D4C4B0' }}
-                    >
+                    <button className="heart-btn" onClick={e => toggleFavorite(selectedCafe.id, e)} title={favorites.has(selectedCafe.id) ? '取消收藏' : '加入收藏'} style={{ fontSize: 22, color: favorites.has(selectedCafe.id) ? '#E53E3E' : '#D4C4B0' }}>
                       {favorites.has(selectedCafe.id) ? '♥' : '♡'}
                     </button>
                     {(() => {
@@ -686,9 +636,7 @@ export default function Home() {
                       return (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: openStatus ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)', padding: '4px 10px', borderRadius: 99, border: `1px solid ${openStatus ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}` }}>
                           <div className={openStatus ? 'dot-open' : ''} style={{ width: 7, height: 7, borderRadius: '50%', background: openStatus ? '#22C55E' : '#EF4444', flexShrink: 0 }} />
-                          <span style={{ fontSize: 11, fontWeight: 700, color: openStatus ? '#16A34A' : '#DC2626' }}>
-                            {openStatus ? '營業中' : '休息中'}
-                          </span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: openStatus ? '#16A34A' : '#DC2626' }}>{openStatus ? '營業中' : '休息中'}</span>
                         </div>
                       );
                     })()}
@@ -696,63 +644,32 @@ export default function Home() {
                 </div>
                 <div style={{ height: '1.5px', background: 'rgba(201,168,124,0.2)', margin: '20px 0' }} />
                 <p style={{ fontSize: 14, color: '#6D5D4E', lineHeight: 1.8, letterSpacing: '0.01em' }}>{selectedCafe.address}</p>
- 
- 
+
                 <OpeningHoursBlock cafeId={selectedCafe.id} openingHours={openingHours} />
- 
+
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 14 }}>
-                  {selectedCafe.tags?.includes('近捷運站') && (
-                    <span style={filterMRT ? tagActiveStyle : tagClickStyle} onClick={() => setFilterMRT(p => !p)}>
-                      {filterMRT ? '✓ ' : ''}近捷運站
-                    </span>
-                  )}
-                  {selectedCafe.has_outlet && (
-                    <span style={filterOutlet ? tagActiveStyle : tagClickStyle} onClick={() => setFilterOutlet(p => !p)}>
-                      {filterOutlet ? '✓ ' : ''}有插座
-                    </span>
-                  )}
-                  {selectedCafe.is_no_time_limit && (
-                    <span style={filterNoTimeLimit ? tagActiveStyle : tagClickStyle} onClick={() => setFilterNoTimeLimit(p => !p)}>
-                      {filterNoTimeLimit ? '✓ ' : ''}不限時
-                    </span>
-                  )}
-                  {selectedCafe.is_pet_friendly && (
-                    <span style={filterPet ? tagActiveStyle : tagClickStyle} onClick={() => setFilterPet(p => !p)}>
-                      {filterPet ? '✓ ' : ''}寵物友善
-                    </span>
-                  )}
-                  {selectedCafe.delivery && (
-                    <span style={filterDelivery ? tagActiveStyle : tagClickStyle} onClick={() => setFilterDelivery(p => !p)}>
-                      {filterDelivery ? '✓ ' : ''}外送
-                    </span>
-                  )}
-                  {selectedCafe.tags?.includes('精品咖啡') && (
-                    <span style={filterSpecialty ? tagActiveStyle : tagClickStyle} onClick={() => setFilterSpecialty(p => !p)}>
-                      {filterSpecialty ? '✓ ' : ''}精品咖啡
-                    </span>
-                  )}
-                  {selectedCafe.tags?.includes('手沖咖啡') && (
-                    <span style={filterPourOver ? tagActiveStyle : tagClickStyle} onClick={() => setFilterPourOver(p => !p)}>
-                      {filterPourOver ? '✓ ' : ''}手沖咖啡
-                    </span>
-                  )}
+                  {selectedCafe.tags?.includes('近捷運站') && <span style={filterMRT ? tagActiveStyle : tagClickStyle} onClick={() => setFilterMRT(p => !p)}>{filterMRT ? '✓ ' : ''}近捷運站</span>}
+                  {selectedCafe.has_outlet && <span style={filterOutlet ? tagActiveStyle : tagClickStyle} onClick={() => setFilterOutlet(p => !p)}>{filterOutlet ? '✓ ' : ''}有插座</span>}
+                  {selectedCafe.is_no_time_limit && <span style={filterNoTimeLimit ? tagActiveStyle : tagClickStyle} onClick={() => setFilterNoTimeLimit(p => !p)}>{filterNoTimeLimit ? '✓ ' : ''}不限時</span>}
+                  {selectedCafe.is_pet_friendly && <span style={filterPet ? tagActiveStyle : tagClickStyle} onClick={() => setFilterPet(p => !p)}>{filterPet ? '✓ ' : ''}寵物友善</span>}
+                  {selectedCafe.delivery && <span style={filterDelivery ? tagActiveStyle : tagClickStyle} onClick={() => setFilterDelivery(p => !p)}>{filterDelivery ? '✓ ' : ''}外送</span>}
+                  {selectedCafe.tags?.includes('精品咖啡') && <span style={filterSpecialty ? tagActiveStyle : tagClickStyle} onClick={() => setFilterSpecialty(p => !p)}>{filterSpecialty ? '✓ ' : ''}精品咖啡</span>}
+                  {selectedCafe.tags?.includes('手沖咖啡') && <span style={filterPourOver ? tagActiveStyle : tagClickStyle} onClick={() => setFilterPourOver(p => !p)}>{filterPourOver ? '✓ ' : ''}手沖咖啡</span>}
                 </div>
- 
+
                 <div style={{ marginTop: 20 }}>
                   <ReportSummary cafeId={selectedCafe.id} />
                 </div>
- 
+
                 <a href={selectedCafe.google_maps_url || '#'} target="_blank" className="maps-btn">
                   在 Google Maps 開啟導航 →
                 </a>
- 
+
                 <div style={{ marginTop: 24 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                    <div style={{ flex: 1, height: '1.5px', background: 'rgba(201,168,124,0.2)' }} />
-                  </div>
+                  <div style={{ flex: 1, height: '1.5px', background: 'rgba(201,168,124,0.2)' }} />
                   <ReportForm cafeId={selectedCafe.id} />
                 </div>
- 
+
                 <ReviewList cafeId={selectedCafe.id} isAdmin={isAdmin} />
                 <ReviewForm cafeId={selectedCafe.id} />
               </div>
@@ -768,4 +685,3 @@ export default function Home() {
     </>
   );
 }
- 
