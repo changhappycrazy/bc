@@ -596,7 +596,7 @@ export default function Home() {
             onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
             onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
           >
-            🔮 不知道去哪？試試咖啡運勢
+            🔮 不知道去哪？試試咖啡運勢 / 個性測試
           </Link>
 
           {/* 聯絡信箱提示 */}
