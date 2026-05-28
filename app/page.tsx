@@ -53,6 +53,9 @@ type Cafe = {
   has_outlet: boolean | null;
   is_pet_friendly: boolean | null;
   is_no_time_limit: boolean | null;
+  near_mrt: boolean | null;
+  specialty_coffee: boolean | null;
+  pour_over: boolean | null;
   tags: string[];
 };
  
@@ -333,13 +336,14 @@ export default function Home() {
       const target = (c.name + (c.full_name || '') + (c.address || '')).toLowerCase();
       if (!tokens.every(token => target.includes(token))) return false;
     }
+    // ── boolean 欄位篩選 ──
     if (filterDelivery && !c.delivery) return false;
     if (filterPet && !c.is_pet_friendly) return false;
     if (filterNoTimeLimit && !c.is_no_time_limit) return false;
-    if (filterMRT && !c.tags?.includes('近捷運站')) return false;
+    if (filterMRT && !c.near_mrt) return false;
     if (filterOutlet && !c.has_outlet) return false;
-    if (filterSpecialty && !c.tags?.includes('精品咖啡')) return false;
-    if (filterPourOver && !c.tags?.includes('手沖咖啡')) return false;
+    if (filterSpecialty && !c.specialty_coffee) return false;
+    if (filterPourOver && !c.pour_over) return false;
     if (filterPriceIds.length > 0 && (c.price_range_id === null || !filterPriceIds.includes(c.price_range_id))) return false;
     return true;
   });
@@ -430,7 +434,7 @@ export default function Home() {
         @keyframes pulse-green { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .dot-open { animation: pulse-green 2s ease-in-out infinite; }
       `}</style>
-
+ 
       {showFavorites && (
         <FavoritesPanel
           cafes={cafes}
@@ -571,14 +575,15 @@ export default function Home() {
                         </button>
                       </div>
                     </div>
+                    {/* 標籤列：改用 boolean 欄位 */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-                      {cafe.tags?.includes('近捷運站') && <span style={tagStyle}>近捷運站</span>}
+                      {cafe.near_mrt && <span style={tagStyle}>近捷運站</span>}
                       {cafe.has_outlet && <span style={tagStyle}>有插座</span>}
                       {cafe.is_no_time_limit && <span style={tagStyle}>不限時</span>}
                       {cafe.is_pet_friendly && <span style={tagStyle}>寵物友善</span>}
                       {cafe.delivery && <span style={tagStyle}>外送</span>}
-                      {cafe.tags?.includes('精品咖啡') && <span style={tagStyle}>精品咖啡</span>}
-                      {cafe.tags?.includes('手沖咖啡') && <span style={tagStyle}>手沖咖啡</span>}
+                      {cafe.specialty_coffee && <span style={tagStyle}>精品咖啡</span>}
+                      {cafe.pour_over && <span style={tagStyle}>手沖咖啡</span>}
                     </div>
                   </div>
                 </div>
@@ -589,7 +594,7 @@ export default function Home() {
  
         <div className="map-area">
           <Map cafes={sorted} openingHours={openingHours} userLocation={location} />
-
+ 
           <Link
             href="/fortune"
             style={{ position: 'absolute', bottom: '20px', left: '20px', zIndex: 1000, background: 'var(--espresso)', color: 'var(--latte)', padding: '12px 20px', borderRadius: '50px', textDecoration: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '14px', transition: 'transform 0.2s' }}
@@ -598,7 +603,7 @@ export default function Home() {
           >
             🔮 不知道去哪？試試咖啡運勢 / 個性測試
           </Link>
-
+ 
           {/* 聯絡信箱提示 */}
           <div style={{ position: 'absolute', bottom: '20px', right: isAdmin ? '180px' : '20px', zIndex: 1000, background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(6px)', border: '1px solid rgba(201,168,124,0.3)', borderRadius: '12px', padding: '8px 14px', fontSize: 11, color: '#7A5C3A', lineHeight: 1.6, boxShadow: '0 2px 12px rgba(44,26,14,0.1)', maxWidth: 240 }}>
             📮 若有其他問題可寄信至<br />
@@ -606,7 +611,7 @@ export default function Home() {
               satestbc@gmail.com
             </a>
           </div>
-
+ 
           {isAdmin && (
             <Link
               href="/admin"
@@ -644,32 +649,33 @@ export default function Home() {
                 </div>
                 <div style={{ height: '1.5px', background: 'rgba(201,168,124,0.2)', margin: '20px 0' }} />
                 <p style={{ fontSize: 14, color: '#6D5D4E', lineHeight: 1.8, letterSpacing: '0.01em' }}>{selectedCafe.address}</p>
-
+ 
                 <OpeningHoursBlock cafeId={selectedCafe.id} openingHours={openingHours} />
-
+ 
+                {/* detail panel 標籤：改用 boolean 欄位，點擊可聯動篩選 */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 14 }}>
-                  {selectedCafe.tags?.includes('近捷運站') && <span style={filterMRT ? tagActiveStyle : tagClickStyle} onClick={() => setFilterMRT(p => !p)}>{filterMRT ? '✓ ' : ''}近捷運站</span>}
+                  {selectedCafe.near_mrt && <span style={filterMRT ? tagActiveStyle : tagClickStyle} onClick={() => setFilterMRT(p => !p)}>{filterMRT ? '✓ ' : ''}近捷運站</span>}
                   {selectedCafe.has_outlet && <span style={filterOutlet ? tagActiveStyle : tagClickStyle} onClick={() => setFilterOutlet(p => !p)}>{filterOutlet ? '✓ ' : ''}有插座</span>}
                   {selectedCafe.is_no_time_limit && <span style={filterNoTimeLimit ? tagActiveStyle : tagClickStyle} onClick={() => setFilterNoTimeLimit(p => !p)}>{filterNoTimeLimit ? '✓ ' : ''}不限時</span>}
                   {selectedCafe.is_pet_friendly && <span style={filterPet ? tagActiveStyle : tagClickStyle} onClick={() => setFilterPet(p => !p)}>{filterPet ? '✓ ' : ''}寵物友善</span>}
                   {selectedCafe.delivery && <span style={filterDelivery ? tagActiveStyle : tagClickStyle} onClick={() => setFilterDelivery(p => !p)}>{filterDelivery ? '✓ ' : ''}外送</span>}
-                  {selectedCafe.tags?.includes('精品咖啡') && <span style={filterSpecialty ? tagActiveStyle : tagClickStyle} onClick={() => setFilterSpecialty(p => !p)}>{filterSpecialty ? '✓ ' : ''}精品咖啡</span>}
-                  {selectedCafe.tags?.includes('手沖咖啡') && <span style={filterPourOver ? tagActiveStyle : tagClickStyle} onClick={() => setFilterPourOver(p => !p)}>{filterPourOver ? '✓ ' : ''}手沖咖啡</span>}
+                  {selectedCafe.specialty_coffee && <span style={filterSpecialty ? tagActiveStyle : tagClickStyle} onClick={() => setFilterSpecialty(p => !p)}>{filterSpecialty ? '✓ ' : ''}精品咖啡</span>}
+                  {selectedCafe.pour_over && <span style={filterPourOver ? tagActiveStyle : tagClickStyle} onClick={() => setFilterPourOver(p => !p)}>{filterPourOver ? '✓ ' : ''}手沖咖啡</span>}
                 </div>
-
+ 
                 <div style={{ marginTop: 20 }}>
                   <ReportSummary cafeId={selectedCafe.id} />
                 </div>
-
+ 
                 <a href={selectedCafe.google_maps_url || '#'} target="_blank" className="maps-btn">
                   在 Google Maps 開啟導航 →
                 </a>
-
+ 
                 <div style={{ marginTop: 24 }}>
                   <div style={{ flex: 1, height: '1.5px', background: 'rgba(201,168,124,0.2)' }} />
                   <ReportForm cafeId={selectedCafe.id} />
                 </div>
-
+ 
                 <ReviewList cafeId={selectedCafe.id} isAdmin={isAdmin} />
                 <ReviewForm cafeId={selectedCafe.id} />
               </div>
@@ -685,3 +691,4 @@ export default function Home() {
     </>
   );
 }
+ 

@@ -59,7 +59,6 @@ const EMPTY_CAFE: Omit<Cafe, 'id'> = {
   pour_over: false, is_quiet: false, is_coffee_first: false, is_retro: false,
 }
  
-// 只有 cafes table 實際存在的欄位
 const CAFE_FIELDS: (keyof Omit<Cafe,'id'>)[] = [
   'name','address','full_name','image_url','google_maps_url','lat','lng',
   'hours','tags','rating','review_count','place_id','price_range_id',
@@ -67,7 +66,6 @@ const CAFE_FIELDS: (keyof Omit<Cafe,'id'>)[] = [
   'near_mrt','specialty_coffee','pour_over','is_coffee_first','is_retro','is_hidden',
 ]
  
-// ── 移除：安靜、咖啡為主、老宅風格 ──
 const TAGS: { key: keyof Omit<Cafe,'id'>; emoji: string; label: string }[] = [
   { key: 'has_outlet',       emoji: '🔌', label: '有插座'   },
   { key: 'is_no_time_limit', emoji: '⏱️', label: '不限時'   },
@@ -86,7 +84,6 @@ const IS: React.CSSProperties = {
 }
 const LS: React.CSSProperties = { fontSize: 11, color: '#7A5C3A', fontWeight: 700, marginBottom: 4, display: 'block' }
  
-// ─── CafeFormFields 移到元件外部，避免每次 render 重建造成 input 失焦 ───
 function CafeFormFields({
   data, onChange, hours, onHourChange
 }: {
@@ -180,7 +177,6 @@ function CafeFormFields({
               </label>
               {!h.is_closed ? (
                 <>
-                  {/* ── width 110 → 135，讓 "上午 09:00" 不被截掉 ── */}
                   <input type="time" value={h.open_time} onChange={e => onHourChange(idx, 'open_time', e.target.value)} style={{ ...IS, width: 135 }} />
                   <span style={{ fontSize: 12, color: '#B09B8A' }}>—</span>
                   <input type="time" value={h.close_time} onChange={e => onHourChange(idx, 'close_time', e.target.value)} style={{ ...IS, width: 135 }} />
@@ -196,7 +192,6 @@ function CafeFormFields({
   )
 }
  
-// ─── 搜尋列獨立成 memo 元件，避免其他 state 變動造成 input 失焦 ───
 const CafeSearchInput = memo(({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
   <input
     style={{ ...IS, flex: 1, padding: '10px 14px' }}
@@ -374,6 +369,8 @@ export default function AdminPage() {
  
   const handleDeleteCafe = async (cafe: Cafe) => {
     if (!confirm('確定刪除「' + cafe.name + '」？')) return
+    await supabase.from('cafe_reviews').delete().eq('cafe_id', cafe.id) // ─── 先刪除有外鍵關聯的資料，避免 foreign key constraint 錯誤 ───
+    await supabase.from('cafe_reports').delete().eq('cafe_id', cafe.id)
     await supabase.from('opening_hours').delete().eq('id', cafe.id)
     const { error } = await supabase.from('cafes').delete().eq('id', cafe.id)
     if (error) { alert('刪除失敗：' + error.message); return }
@@ -398,7 +395,6 @@ export default function AdminPage() {
     setNewCafeHours(prev => prev.map((h, i) => i === idx ? { ...h, [k]: v } : h))
   }, [])
  
-  // ─── useCallback 穩定搜尋 handler，避免 memo 失效 ───
   const handleCafeSearchChange = useCallback((v: string) => {
     setCafeSearch(v)
   }, [])
@@ -545,7 +541,6 @@ export default function AdminPage() {
         {tab === 'cafes' && (
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-              {/* ─── 改用 memo 元件，避免輸入一個字就失焦 ─── */}
               <CafeSearchInput value={cafeSearch} onChange={handleCafeSearchChange} />
               <button onClick={() => { setShowNewCafeForm(true); setEditingCafe(null) }} style={{ background: '#2C1A0E', color: '#C9A87C', border: 'none', borderRadius: 10, padding: '10px 18px', cursor: 'pointer', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
                 ＋ 新增店家
