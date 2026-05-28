@@ -161,7 +161,8 @@ export default function Map({ cafes = [], openingHours = [], userLocation = null
     });
 
     cafes.forEach((cafe) => {
-      const isOpen = getOpenStatus(cafe.id, openingHours);
+  if (!cafe.lat || !cafe.lng) return;
+  const isOpen = getOpenStatus(cafe.id, openingHours);
       const dimmed = userLocation
         ? getDistanceKm(userLocation.lat, userLocation.lng, cafe.lat, cafe.lng) > radiusKm
         : false;
