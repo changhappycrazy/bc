@@ -45,7 +45,6 @@ type Cafe = {
   review_count: number | null;
   price_range_id: number | null;
   price_range: PriceRange | null;
-  hours: string | null;
   image_url: string | null;
   google_maps_url: string | null;
   delivery: boolean | null;
@@ -56,7 +55,6 @@ type Cafe = {
   near_mrt: boolean | null;
   specialty_coffee: boolean | null;
   pour_over: boolean | null;
-  tags: string[];
 };
  
 type OpeningHour = {

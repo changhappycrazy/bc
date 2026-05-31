@@ -17,10 +17,7 @@ type Cafe = {
   address: string
   lat?: number
   lng?: number
-  hours?: string
-  tags?: string[]
   image_url?: string
-  full_name?: string
   rating?: number
   review_count?: number
   google_maps_url?: string
@@ -53,15 +50,15 @@ const DEFAULT_HOURS = (): OpeningHour[] =>
  
 const EMPTY_CAFE: Omit<Cafe, 'id'> = {
   name: '', address: '',
-  google_maps_url: '', image_url: '', full_name: '',
+  google_maps_url: '', image_url: '',
   has_outlet: false, is_no_time_limit: false, near_mrt: false,
   is_pet_friendly: false, delivery: false, specialty_coffee: false,
   pour_over: false, is_quiet: false, is_coffee_first: false, is_retro: false,
 }
  
 const CAFE_FIELDS: (keyof Omit<Cafe,'id'>)[] = [
-  'name','address','full_name','image_url','google_maps_url','lat','lng',
-  'hours','tags','rating','review_count','place_id','price_range_id',
+  'name','address','image_url','google_maps_url','lat','lng',
+  'rating','review_count','place_id','price_range_id',
   'delivery','has_outlet','is_quiet','is_pet_friendly','is_no_time_limit',
   'near_mrt','specialty_coffee','pour_over','is_coffee_first','is_retro','is_hidden',
 ]
@@ -96,15 +93,10 @@ function CafeFormFields({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
  
-        <div>
-          <label style={LS}>店名 *</label>
-          <input style={IS} value={data.name || ''} onChange={e => onChange('name', e.target.value)} placeholder="例：無名咖啡" />
-        </div>
- 
-        <div>
-          <label style={LS}>完整名稱（英文）</label>
-          <input style={IS} value={data.full_name || ''} onChange={e => onChange('full_name', e.target.value)} placeholder="例：Coffee HABU Co." />
-        </div>
+       <div style={{ gridColumn: '1 / -1' }}>
+  <label style={LS}>店名 *</label>
+  <input style={IS} value={data.name || ''} onChange={e => onChange('name', e.target.value)} placeholder="例：無名咖啡" />
+</div>
  
         <div style={{ gridColumn: '1 / -1' }}>
           <label style={LS}>地址 *</label>
