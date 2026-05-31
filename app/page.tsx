@@ -28,6 +28,13 @@ const Map = dynamic(() => import('./components/Map'), {
 const supabase = createClient();
 const ADMIN_EMAIL = 'satestbc@gmail.com';
  
+// ── 暱稱長度驗證工具函式 ──────────────────────────────────────────
+function isNicknameTooLong(name: string): boolean {
+  const chineseCount = (name.match(/[\u4e00-\u9fa5]/g) || []).length;
+  const otherCount = name.length - chineseCount;
+  return chineseCount > 6 || otherCount > 11;
+}
+ 
 type PriceRange = {
   id: number;
   display_text: string;
@@ -182,6 +189,53 @@ function FavoritesPanel({ cafes, favorites, onClose, onSelect, onToggleFavorite 
   );
 }
  
+// ── 暱稱過長提示橫幅 ────────────────────────────────────────────
+function NicknameWarningBanner({ onDismiss, onEdit }: { onDismiss: () => void; onEdit: () => void }) {
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 3000,
+      background: 'linear-gradient(135deg, #92400E, #B45309)',
+      color: 'white',
+      padding: '12px 20px',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+      boxShadow: '0 4px 20px rgba(44,26,14,0.3)',
+      animation: 'slideDown 0.4s cubic-bezier(0.4,0,0.2,1)',
+    }}>
+      <style>{`
+        @keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+      `}</style>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+        <span style={{ fontSize: 18, flexShrink: 0 }}>✏️</span>
+        <p style={{ fontSize: 13, lineHeight: 1.6, margin: 0 }}>
+          建議修改暱稱至 <strong>6 個中文字以內</strong>或 <strong>11 個英文字母以內</strong>，以享有更好的系統體驗。
+        </p>
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+        <button
+          onClick={onEdit}
+          style={{
+            background: 'white', color: '#92400E', border: 'none',
+            padding: '6px 14px', borderRadius: 8, fontSize: 12,
+            fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+          }}
+        >
+          立即修改
+        </button>
+        <button
+          onClick={onDismiss}
+          style={{
+            background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.4)',
+            padding: '6px 12px', borderRadius: 8, fontSize: 12,
+            fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+          }}
+        >
+          稍後再說
+        </button>
+      </div>
+    </div>
+  );
+}
+ 
 export default function Home() {
   const [cafes, setCafes] = useState<Cafe[]>([]);
   const [priceRanges, setPriceRanges] = useState<PriceRange[]>([]);
@@ -204,6 +258,10 @@ export default function Home() {
   const [isEditing, setIsEditing] = useState(false);
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
   const [showFavorites, setShowFavorites] = useState(false);
+  // ── 新增：暱稱過長提示橫幅 & 儲存中狀態 ──
+  const [showNicknameWarning, setShowNicknameWarning] = useState(false);
+  const [isSavingNickname, setIsSavingNickname] = useState(false);
+  const [nicknameError, setNicknameError] = useState('');
   const { location, status, requestLocation } = useGeolocation();
  
   useEffect(() => {
@@ -213,9 +271,14 @@ export default function Home() {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       if (currentUser) {
-        setNickname(currentUser.user_metadata.display_name || currentUser.user_metadata.full_name || '咖啡愛好者');
+        const displayName = currentUser.user_metadata.display_name || currentUser.user_metadata.full_name || '咖啡愛好者';
+        setNickname(displayName);
         setIsAdmin(currentUser.email === ADMIN_EMAIL);
         fetchFavorites(currentUser.id);
+        // ── 登入後檢查暱稱長度，超標就顯示橫幅 ──
+        if (isNicknameTooLong(displayName)) {
+          setShowNicknameWarning(true);
+        }
       }
       setAuthLoading(false);
     };
@@ -224,12 +287,18 @@ export default function Home() {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       if (currentUser) {
-        setNickname(currentUser.user_metadata.display_name || currentUser.user_metadata.full_name || '咖啡愛好者');
+        const displayName = currentUser.user_metadata.display_name || currentUser.user_metadata.full_name || '咖啡愛好者';
+        setNickname(displayName);
         setIsAdmin(currentUser.email === ADMIN_EMAIL);
         fetchFavorites(currentUser.id);
+        // ── 狀態變更時也一併檢查 ──
+        if (isNicknameTooLong(displayName)) {
+          setShowNicknameWarning(true);
+        }
       } else {
         setIsAdmin(false);
         setFavorites(new Set());
+        setShowNicknameWarning(false);
       }
     });
     async function fetchCafes() {
@@ -310,20 +379,80 @@ export default function Home() {
     await supabase.auth.signOut();
   };
  
+  // ── 更新暱稱（含重複檢查）────────────────────────────────────────
   const updateNickname = async () => {
     if (!user) return;
+    setNicknameError('');
+ 
+    // 長度驗證
     const chineseCount = (nickname.match(/[\u4e00-\u9fa5]/g) || []).length;
     const otherCount = nickname.length - chineseCount;
-    if (chineseCount > 6) { alert('暱稱中的中文字數不能超過 6 個字喔！'); return; }
-    if (otherCount > 11) { alert('暱稱中的英文或數字不能超過 11 個字元喔！'); return; }
-    if (nickname.trim() === '') { alert('暱稱不能為空！'); return; }
+    if (chineseCount > 6) {
+      setNicknameError('中文字數不能超過 6 個字');
+      return;
+    }
+    if (otherCount > 11) {
+      setNicknameError('英文或數字不能超過 11 個字元');
+      return;
+    }
+    if (nickname.trim() === '') {
+      setNicknameError('暱稱不能為空');
+      return;
+    }
+ 
+    setIsSavingNickname(true);
+ 
+    // ── 重複暱稱檢查：查詢 profiles 表，涵蓋所有登入過的使用者 ──
+    const { data: duplicateData, error: dupError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('display_name', nickname.trim())
+      .neq('id', user.id)
+      .limit(1);
+ 
+    if (dupError) {
+      console.error('重複暱稱查詢失敗：', dupError);
+      // 查詢失敗不阻止儲存，繼續進行
+    } else if (duplicateData && duplicateData.length > 0) {
+      setNicknameError('該暱稱已有人使用，請換一個暱稱試試！');
+      setIsSavingNickname(false);
+      return;
+    }
+ 
+    // 更新 auth metadata
     const { error: authError } = await supabase.auth.updateUser({ data: { display_name: nickname } });
-    if (authError) { alert('更新失敗：' + authError.message); return; }
-    const { error: reviewError } = await supabase.from('cafe_reviews').update({ user_name: nickname }).eq('user_id', user.id);
+    if (authError) {
+      setNicknameError('更新失敗：' + authError.message);
+      setIsSavingNickname(false);
+      return;
+    }
+ 
+    // 同步更新 profiles 表（upsert 確保新舊使用者都能寫入）
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({ id: user.id, display_name: nickname.trim() });
+ 
+    if (profileError) {
+      console.error('profiles 同步失敗：', profileError);
+    }
+ 
+    // 同步更新評論中的 user_name
+    const { error: reviewError } = await supabase
+      .from('cafe_reviews')
+      .update({ user_name: nickname })
+      .eq('user_id', user.id);
+ 
+    setIsSavingNickname(false);
+ 
     if (reviewError) {
       alert('暱稱已更新，但評論同步失敗：' + reviewError.message);
     } else {
       setIsEditing(false);
+      setNicknameError('');
+      // 暱稱改好後若不再超標，關閉警告橫幅
+      if (!isNicknameTooLong(nickname)) {
+        setShowNicknameWarning(false);
+      }
       alert('暱稱與評論已同步更新！');
     }
   };
@@ -334,7 +463,6 @@ export default function Home() {
       const target = (c.name + (c.full_name || '') + (c.address || '')).toLowerCase();
       if (!tokens.every(token => target.includes(token))) return false;
     }
-    // ── boolean 欄位篩選 ──
     if (filterDelivery && !c.delivery) return false;
     if (filterPet && !c.is_pet_friendly) return false;
     if (filterNoTimeLimit && !c.is_no_time_limit) return false;
@@ -433,6 +561,17 @@ export default function Home() {
         .dot-open { animation: pulse-green 2s ease-in-out infinite; }
       `}</style>
  
+      {/* ── 暱稱過長警告橫幅 ── */}
+      {showNicknameWarning && (
+        <NicknameWarningBanner
+          onDismiss={() => setShowNicknameWarning(false)}
+          onEdit={() => {
+            setShowNicknameWarning(false);
+            setIsEditing(true);
+          }}
+        />
+      )}
+ 
       {showFavorites && (
         <FavoritesPanel
           cafes={cafes}
@@ -490,10 +629,40 @@ export default function Home() {
                 {isEditing ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ display: 'flex', gap: '4px' }}>
-                      <input style={{ fontSize: '12px', padding: '4px 8px', border: '1px solid var(--latte)', borderRadius: '6px', width: '90px' }} value={nickname} onChange={e => setNickname(e.target.value)} placeholder="中6 / 英11" />
-                      <button className="auth-btn" style={{ background: 'var(--espresso)', color: 'var(--latte)' }} onClick={updateNickname}>存</button>
+                      <input
+                        style={{
+                          fontSize: '12px', padding: '4px 8px',
+                          border: `1px solid ${nicknameError ? '#EF4444' : 'var(--latte)'}`,
+                          borderRadius: '6px', width: '90px'
+                        }}
+                        value={nickname}
+                        onChange={e => { setNickname(e.target.value); setNicknameError(''); }}
+                        placeholder="中6 / 英11"
+                        onKeyDown={e => e.key === 'Enter' && updateNickname()}
+                      />
+                      <button
+                        className="auth-btn"
+                        style={{ background: 'var(--espresso)', color: 'var(--latte)', opacity: isSavingNickname ? 0.6 : 1 }}
+                        onClick={updateNickname}
+                        disabled={isSavingNickname}
+                      >
+                        {isSavingNickname ? '…' : '存'}
+                      </button>
+                      <button
+                        className="auth-btn"
+                        style={{ background: '#F8F4EF', color: '#999' }}
+                        onClick={() => { setIsEditing(false); setNicknameError(''); }}
+                        disabled={isSavingNickname}
+                      >
+                        取消
+                      </button>
                     </div>
-                    <span style={{ fontSize: '9px', color: '#EF4444', scale: '0.85', transformOrigin: 'left' }}>(限中6字 / 英11字)</span>
+                    {/* 錯誤提示（含重複暱稱） */}
+                    {nicknameError ? (
+                      <span style={{ fontSize: '10px', color: '#EF4444', lineHeight: 1.4 }}>⚠ {nicknameError}</span>
+                    ) : (
+                      <span style={{ fontSize: '9px', color: '#B09B8A' }}>(限中6字 / 英11字)</span>
+                    )}
                   </div>
                 ) : (
                   <>
@@ -573,7 +742,6 @@ export default function Home() {
                         </button>
                       </div>
                     </div>
-                    {/* 標籤列：改用 boolean 欄位 */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
                       {cafe.near_mrt && <span style={tagStyle}>近捷運站</span>}
                       {cafe.has_outlet && <span style={tagStyle}>有插座</span>}
@@ -602,7 +770,6 @@ export default function Home() {
             🔮 不知道去哪？試試咖啡運勢 / 個性測試
           </Link>
  
-          {/* 聯絡信箱提示 */}
           <div style={{ position: 'absolute', bottom: '20px', right: isAdmin ? '180px' : '20px', zIndex: 1000, background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(6px)', border: '1px solid rgba(201,168,124,0.3)', borderRadius: '12px', padding: '8px 14px', fontSize: 11, color: '#7A5C3A', lineHeight: 1.6, boxShadow: '0 2px 12px rgba(44,26,14,0.1)', maxWidth: 240 }}>
             📮 若有其他問題可寄信至<br />
             <a href="mailto:satestbc@gmail.com" style={{ color: '#C9A87C', fontWeight: 700, textDecoration: 'none', wordBreak: 'break-all' }}>
@@ -650,7 +817,6 @@ export default function Home() {
  
                 <OpeningHoursBlock cafeId={selectedCafe.id} openingHours={openingHours} />
  
-                {/* detail panel 標籤：改用 boolean 欄位，點擊可聯動篩選 */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 14 }}>
                   {selectedCafe.near_mrt && <span style={filterMRT ? tagActiveStyle : tagClickStyle} onClick={() => setFilterMRT(p => !p)}>{filterMRT ? '✓ ' : ''}近捷運站</span>}
                   {selectedCafe.has_outlet && <span style={filterOutlet ? tagActiveStyle : tagClickStyle} onClick={() => setFilterOutlet(p => !p)}>{filterOutlet ? '✓ ' : ''}有插座</span>}
