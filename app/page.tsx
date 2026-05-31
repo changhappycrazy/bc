@@ -27,7 +27,7 @@ const Map = dynamic(() => import('./components/Map'), {
  
 const supabase = createClient();
 const ADMIN_EMAIL = 'satestbc@gmail.com';
- 
+
 // ── 暱稱長度驗證工具函式 ──────────────────────────────────────────
 function isNicknameTooLong(name: string): boolean {
   const chineseCount = (name.match(/[\u4e00-\u9fa5]/g) || []).length;
@@ -188,7 +188,7 @@ function FavoritesPanel({ cafes, favorites, onClose, onSelect, onToggleFavorite 
     </div>
   );
 }
- 
+
 // ── 暱稱過長提示橫幅 ────────────────────────────────────────────
 function NicknameWarningBanner({ onDismiss, onEdit }: { onDismiss: () => void; onEdit: () => void }) {
   return (
@@ -378,12 +378,12 @@ export default function Home() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
- 
+
   // ── 更新暱稱（含重複檢查）────────────────────────────────────────
   const updateNickname = async () => {
     if (!user) return;
     setNicknameError('');
- 
+
     // 長度驗證
     const chineseCount = (nickname.match(/[\u4e00-\u9fa5]/g) || []).length;
     const otherCount = nickname.length - chineseCount;
@@ -399,9 +399,9 @@ export default function Home() {
       setNicknameError('暱稱不能為空');
       return;
     }
- 
+
     setIsSavingNickname(true);
- 
+
     // ── 重複暱稱檢查：查詢 profiles 表，涵蓋所有登入過的使用者 ──
     const { data: duplicateData, error: dupError } = await supabase
       .from('profiles')
@@ -409,7 +409,7 @@ export default function Home() {
       .eq('display_name', nickname.trim())
       .neq('id', user.id)
       .limit(1);
- 
+
     if (dupError) {
       console.error('重複暱稱查詢失敗：', dupError);
       // 查詢失敗不阻止儲存，繼續進行
@@ -418,7 +418,7 @@ export default function Home() {
       setIsSavingNickname(false);
       return;
     }
- 
+
     // 更新 auth metadata
     const { error: authError } = await supabase.auth.updateUser({ data: { display_name: nickname } });
     if (authError) {
@@ -426,24 +426,24 @@ export default function Home() {
       setIsSavingNickname(false);
       return;
     }
- 
+
     // 同步更新 profiles 表（upsert 確保新舊使用者都能寫入）
     const { error: profileError } = await supabase
       .from('profiles')
       .upsert({ id: user.id, display_name: nickname.trim() });
- 
+
     if (profileError) {
       console.error('profiles 同步失敗：', profileError);
     }
- 
+
     // 同步更新評論中的 user_name
     const { error: reviewError } = await supabase
       .from('cafe_reviews')
       .update({ user_name: nickname })
       .eq('user_id', user.id);
- 
+
     setIsSavingNickname(false);
- 
+
     if (reviewError) {
       alert('暱稱已更新，但評論同步失敗：' + reviewError.message);
     } else {
@@ -560,7 +560,7 @@ export default function Home() {
         @keyframes pulse-green { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .dot-open { animation: pulse-green 2s ease-in-out infinite; }
       `}</style>
- 
+
       {/* ── 暱稱過長警告橫幅 ── */}
       {showNicknameWarning && (
         <NicknameWarningBanner
@@ -638,7 +638,6 @@ export default function Home() {
                         value={nickname}
                         onChange={e => { setNickname(e.target.value); setNicknameError(''); }}
                         placeholder="中6 / 英11"
-                        onKeyDown={e => e.key === 'Enter' && updateNickname()}
                       />
                       <button
                         className="auth-btn"
@@ -855,4 +854,3 @@ export default function Home() {
     </>
   );
 }
- 
