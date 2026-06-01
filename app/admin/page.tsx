@@ -193,6 +193,11 @@ const CafeSearchInput = memo(({ value, onChange }: { value: string; onChange: (v
   />
 ))
 CafeSearchInput.displayName = 'CafeSearchInput'
+
+// ── 判斷是否為重複店名錯誤 ──
+function isDuplicateNameError(message: string): boolean {
+  return message.includes('cafes_name_key') || message.includes('duplicate key')
+}
  
 export default function AdminPage() {
   const supabase = createClient()
@@ -288,7 +293,15 @@ export default function AdminPage() {
       CAFE_FIELDS.map(k => [k, (newCafeData as any)[k]]).filter(([, v]) => v !== undefined)
     )
     const { data, error } = await supabase.from('cafes').insert([payload]).select().single()
-    if (error) { alert('新增失敗：' + error.message); setSaving(false); return }
+    if (error) {
+      if (isDuplicateNameError(error.message)) {
+        alert('店名和地址不能與已有的店家相同')
+      } else {
+        alert('新增失敗：' + error.message)
+      }
+      setSaving(false)
+      return
+    }
     const hoursToInsert = newCafeHours.map(h => ({
       id: data.id, day_of_week: h.day_of_week,
       open_time: h.open_time, close_time: h.close_time, is_closed: h.is_closed
@@ -329,7 +342,15 @@ export default function AdminPage() {
     console.log('=== update data ===', updateData)
     console.log('=== update error ===', JSON.stringify(error, null, 2))
  
-    if (error) { alert('儲存失敗：' + error.message); setSaving(false); return }
+    if (error) {
+      if (isDuplicateNameError(error.message)) {
+        alert('店名、地址及地圖連結不能和已有的店家相同')
+      } else {
+        alert('儲存失敗：' + error.message)
+      }
+      setSaving(false)
+      return
+    }
     if (!updateData || updateData.length === 0) {
       alert('儲存失敗：RLS 政策擋住了更新（請檢查 Supabase Policies）')
       setSaving(false)
@@ -361,7 +382,7 @@ export default function AdminPage() {
  
   const handleDeleteCafe = async (cafe: Cafe) => {
     if (!confirm('確定刪除「' + cafe.name + '」？')) return
-    await supabase.from('cafe_reviews').delete().eq('cafe_id', cafe.id) // ─── 先刪除有外鍵關聯的資料，避免 foreign key constraint 錯誤 ───
+    await supabase.from('cafe_reviews').delete().eq('cafe_id', cafe.id)
     await supabase.from('cafe_reports').delete().eq('cafe_id', cafe.id)
     await supabase.from('opening_hours').delete().eq('id', cafe.id)
     const { error } = await supabase.from('cafes').delete().eq('id', cafe.id)
@@ -645,4 +666,3 @@ export default function AdminPage() {
     </div>
   )
 }
- 
